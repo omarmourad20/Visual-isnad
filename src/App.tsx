@@ -51,6 +51,7 @@ type HadithRecord = {
   chapter_title_arabic?: string
   arabic_matn?: string
   arabic_isnad?: string
+  arabic_full?: string
   english_matn?: string
   topic?: string
   grade?: string
@@ -784,6 +785,10 @@ function Explorer({ onHome }: { onHome: () => void }) {
   const englishMatn = currentHadith?.english_matn || ''
   const arabicText = (currentHadith?.arabic_matn || '').replace(/^["«\s]+/, '').trim()
   const arabicIsnad = (currentHadith?.arabic_isnad || '').trim()
+  const arabicFull = (
+    currentHadith?.arabic_full
+    || [arabicIsnad, arabicText].filter(Boolean).join('\n\n')
+  ).trim()
   const englishPreview = previewText(englishMatn, 28)
   const arabicPreview = previewText(arabicText, 18)
   const hadithIsLong = englishPreview.truncated || arabicPreview.truncated
@@ -1390,22 +1395,16 @@ function Explorer({ onHome }: { onHome: () => void }) {
               {currentHadith.grade ? <div><dt>Grade</dt><dd>{currentHadith.grade}</dd></div> : null}
             </dl>
             <div className="hadith-reader-body">
-              {arabicText ? (
+              {arabicFull ? (
                 <section>
                   <h3>Arabic</h3>
-                  <p className="arabic-text" lang="ar" dir="rtl">{arabicText}</p>
+                  <p className="arabic-text" lang="ar" dir="rtl">{arabicFull}</p>
                 </section>
               ) : null}
               <section>
                 <h3>English</h3>
                 <p>{englishMatn || 'English translation is not available for this record.'}</p>
               </section>
-              {arabicIsnad && arabicIsnad !== arabicText ? (
-                <section>
-                  <h3>Isnad</h3>
-                  <p className="arabic-text" lang="ar" dir="rtl">{arabicIsnad}</p>
-                </section>
-              ) : null}
             </div>
           </article>
         </div>
