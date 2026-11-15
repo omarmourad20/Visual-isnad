@@ -1524,5 +1524,22 @@
   .landing-method,
   .landing-features,
   .landing-how { padding-left: 20px; padding-right: 20px; }
+  .landing-feature-wrap,
+  .landing-feature-wrap.is-scrollable {
+    grid-template-columns: 1fr;
+  }
+  .landing-feature-nav { display: none; }
+  .landing-feature-grid,
+  .landing-feature-wrap:not(.is-scrollable) .landing-feature-grid {
+    flex-direction: column;
+    overflow: visible;
+    scroll-snap-type: none;
+    justify-content: stretch;
+  }
+  .landing-card {
+    flex: none;
+    width: 100%;
+    min-height: 0;
+  }
   .landing-footer p { text-align: left; }
 }

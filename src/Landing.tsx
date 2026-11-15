@@ -17,11 +17,22 @@ export default function Landing({ onExplore }: LandingProps) {
   useEffect(() => {
     const track = featureTrack.current
     if (!track) return
-    const update = () => setFeaturesScrollable(track.scrollWidth > track.clientWidth + 8)
+    const media = window.matchMedia('(max-width: 960px)')
+    const update = () => {
+      if (media.matches) {
+        setFeaturesScrollable(false)
+        return
+      }
+      setFeaturesScrollable(track.scrollWidth > track.clientWidth + 8)
+    }
     update()
     const observer = new ResizeObserver(update)
     observer.observe(track)
-    return () => observer.disconnect()
+    media.addEventListener('change', update)
+    return () => {
+      observer.disconnect()
+      media.removeEventListener('change', update)
+    }
   }, [])
 
   const scrollFeatures = (direction: number) => {
