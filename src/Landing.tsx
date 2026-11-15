@@ -1,4 +1,4 @@
-import { useRef, type MouseEvent } from 'react'
+import { useEffect, useRef, useState, type MouseEvent } from 'react'
 
 type LandingProps = {
   onExplore: () => void
@@ -12,12 +12,23 @@ function goExplore(event: MouseEvent<HTMLAnchorElement>, onExplore: () => void) 
 
 export default function Landing({ onExplore }: LandingProps) {
   const featureTrack = useRef<HTMLDivElement>(null)
+  const [featuresScrollable, setFeaturesScrollable] = useState(false)
+
+  useEffect(() => {
+    const track = featureTrack.current
+    if (!track) return
+    const update = () => setFeaturesScrollable(track.scrollWidth > track.clientWidth + 8)
+    update()
+    const observer = new ResizeObserver(update)
+    observer.observe(track)
+    return () => observer.disconnect()
+  }, [])
 
   const scrollFeatures = (direction: number) => {
     const track = featureTrack.current
     if (!track) return
     const card = track.querySelector('.landing-card')
-    const amount = (card instanceof HTMLElement ? card.offsetWidth : 300) + 18
+    const amount = (card instanceof HTMLElement ? card.offsetWidth : 248) + 18
     track.scrollBy({ left: direction * amount, behavior: 'smooth' })
   }
 
@@ -86,6 +97,16 @@ export default function Landing({ onExplore }: LandingProps) {
                 <span>8 nodes</span>
               </div>
               <div className="landing-chain" aria-hidden="true">
+                <svg className="landing-chain-edges" viewBox="0 0 100 100" preserveAspectRatio="none">
+                  <defs>
+                    <marker id="landing-arrow" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto">
+                      <path d="M0 0 L7 3.5 L0 7 z" fill="#7fa397" />
+                    </marker>
+                  </defs>
+                  <path d="M78 10 C78 22, 22 20, 22 32" />
+                  <path d="M22 42 C22 54, 78 52, 78 64" />
+                  <path d="M78 74 C78 86, 22 84, 22 96" />
+                </svg>
                 <div className="landing-band">
                   <small>Prophetic era</small>
                   <article className="landing-node landing-node-end">
@@ -169,13 +190,15 @@ export default function Landing({ onExplore }: LandingProps) {
             Analytical tools presented with the care and context that sacred scholarship deserves.
           </p>
         </div>
-        <div className="landing-feature-wrap">
-          <button type="button" className="landing-feature-nav" onClick={() => scrollFeatures(-1)} aria-label="Previous features">
-            ‹
-          </button>
+        <div className={`landing-feature-wrap${featuresScrollable ? ' is-scrollable' : ''}`}>
+          {featuresScrollable ? (
+            <button type="button" className="landing-feature-nav" onClick={() => scrollFeatures(-1)} aria-label="Previous features">
+              ‹
+            </button>
+          ) : null}
           <div className="landing-feature-grid" ref={featureTrack}>
           <article className="landing-card landing-card-dark">
-            <span>01</span>
+            <span className="landing-card-num">01</span>
             <svg className="landing-card-art" viewBox="0 0 220 90" aria-hidden="true">
               <circle cx="28" cy="48" r="12" fill="#f4efe4" />
               <circle cx="108" cy="28" r="16" fill="#d4a017" />
@@ -186,16 +209,16 @@ export default function Landing({ onExplore }: LandingProps) {
             <p>Follow directed transmission paths, move through generations, and select any narrator to inspect the chain.</p>
           </article>
           <article className="landing-card">
-            <span>02</span>
+            <span className="landing-card-num">02</span>
             <div className="landing-card-search" aria-hidden="true">
-              <span>⌕</span>
+              <b>⌕</b>
               Search narrators…
             </div>
             <h3>Search any narrator</h3>
             <p>Look up more than 14,000 names from the explorer search and jump straight to that person’s record.</p>
           </article>
           <article className="landing-card">
-            <span>03</span>
+            <span className="landing-card-num">03</span>
             <div className="landing-card-chip">
               <strong>SU</strong>
               <div>
@@ -208,7 +231,7 @@ export default function Landing({ onExplore }: LandingProps) {
             <p>Open biographies, reliability notes, teachers, students, regions, and dates without leaving the workspace.</p>
           </article>
           <article className="landing-card">
-            <span>04</span>
+            <span className="landing-card-num">04</span>
             <svg className="landing-card-art light" viewBox="0 0 220 90" aria-hidden="true">
               <circle cx="36" cy="46" r="11" fill="#edd8bf" />
               <circle cx="110" cy="46" r="14" fill="#c5ddd6" />
@@ -219,9 +242,11 @@ export default function Landing({ onExplore }: LandingProps) {
             <p>Highlight the route of a narration and surface the madar so shared links in the chain stand out.</p>
           </article>
           </div>
-          <button type="button" className="landing-feature-nav" onClick={() => scrollFeatures(1)} aria-label="Next features">
-            ›
-          </button>
+          {featuresScrollable ? (
+            <button type="button" className="landing-feature-nav" onClick={() => scrollFeatures(1)} aria-label="Next features">
+              ›
+            </button>
+          ) : null}
         </div>
       </section>
 
@@ -293,7 +318,7 @@ export default function Landing({ onExplore }: LandingProps) {
           <p className="landing-kicker">Scholarly by design</p>
           <h2>Context first. <em>Always.</em></h2>
           <p>
-            Visual Isnad is an exploration and analysis tool—not an independent authority on
+            Visual Isnad is an exploration and analysis tool and not an independent authority on
             hadith authenticity. Every relationship stays connected to its canonical source
             and biographical record.
           </p>
@@ -325,7 +350,7 @@ export default function Landing({ onExplore }: LandingProps) {
         <a className="landing-cta landing-cta-lg" href="/explore" onClick={(event) => goExplore(event, onExplore)}>
           Open the Visual Isnad explorer <span aria-hidden="true">→</span>
         </a>
-        <p className="landing-how-note">No account required · Sahih al-Bukhari is live now · other collections coming</p>
+        <p className="landing-how-note">other collections coming</p>
       </section>
 
       <footer className="landing-footer">
