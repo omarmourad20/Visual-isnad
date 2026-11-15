@@ -1,4 +1,4 @@
-import type { MouseEvent } from 'react'
+import { useRef, type MouseEvent } from 'react'
 
 type LandingProps = {
   onExplore: () => void
@@ -11,6 +11,16 @@ function goExplore(event: MouseEvent<HTMLAnchorElement>, onExplore: () => void) 
 }
 
 export default function Landing({ onExplore }: LandingProps) {
+  const featureTrack = useRef<HTMLDivElement>(null)
+
+  const scrollFeatures = (direction: number) => {
+    const track = featureTrack.current
+    if (!track) return
+    const card = track.querySelector('.landing-card')
+    const amount = (card instanceof HTMLElement ? card.offsetWidth : 300) + 18
+    track.scrollBy({ left: direction * amount, behavior: 'smooth' })
+  }
+
   return (
     <div className="landing">
       <header className="landing-nav">
@@ -159,7 +169,11 @@ export default function Landing({ onExplore }: LandingProps) {
             Analytical tools presented with the care and context that sacred scholarship deserves.
           </p>
         </div>
-        <div className="landing-feature-grid">
+        <div className="landing-feature-wrap">
+          <button type="button" className="landing-feature-nav" onClick={() => scrollFeatures(-1)} aria-label="Previous features">
+            ‹
+          </button>
+          <div className="landing-feature-grid" ref={featureTrack}>
           <article className="landing-card landing-card-dark">
             <span>01</span>
             <svg className="landing-card-art" viewBox="0 0 220 90" aria-hidden="true">
@@ -173,6 +187,15 @@ export default function Landing({ onExplore }: LandingProps) {
           </article>
           <article className="landing-card">
             <span>02</span>
+            <div className="landing-card-search" aria-hidden="true">
+              <span>⌕</span>
+              Search narrators…
+            </div>
+            <h3>Search any narrator</h3>
+            <p>Look up more than 14,000 names from the explorer search and jump straight to that person’s record.</p>
+          </article>
+          <article className="landing-card">
+            <span>03</span>
             <div className="landing-card-chip">
               <strong>SU</strong>
               <div>
@@ -185,7 +208,7 @@ export default function Landing({ onExplore }: LandingProps) {
             <p>Open biographies, reliability notes, teachers, students, regions, and dates without leaving the workspace.</p>
           </article>
           <article className="landing-card">
-            <span>03</span>
+            <span>04</span>
             <svg className="landing-card-art light" viewBox="0 0 220 90" aria-hidden="true">
               <circle cx="36" cy="46" r="11" fill="#edd8bf" />
               <circle cx="110" cy="46" r="14" fill="#c5ddd6" />
@@ -195,6 +218,10 @@ export default function Landing({ onExplore }: LandingProps) {
             <h3>Trace paths and common links</h3>
             <p>Highlight the route of a narration and surface the madar so shared links in the chain stand out.</p>
           </article>
+          </div>
+          <button type="button" className="landing-feature-nav" onClick={() => scrollFeatures(1)} aria-label="Next features">
+            ›
+          </button>
         </div>
       </section>
 
@@ -248,10 +275,16 @@ export default function Landing({ onExplore }: LandingProps) {
             </div>
             <h4>Biography</h4>
             <p>
-              A major hadith scholar of Makkah. Open any narrator from search or from a chain
-              to read their stored biography and related details.
+              Sufyan ibn Uyaynah ibn Maymun al-Hilali was born in 107 AH and spent his scholarly
+              life in Makkah. He heard hadith from a wide circle of earlier authorities, including
+              figures of the Hijaz and Iraq, and became one of the most frequently cited teachers
+              of the following generation. Later imams took from him, and his transmissions appear
+              throughout the major collections. He died in Makkah in 198 AH.
             </p>
           </article>
+          <p className="landing-profile-note">
+            Open any narrator from search or from a chain to read their stored biography and related details.
+          </p>
         </aside>
       </section>
 

@@ -1034,9 +1034,20 @@ function Explorer({ onHome }: { onHome: () => void }) {
                   Read full hadith <Icon name="arrow" size={15} />
                 </button>
               </div>
-              <p className="arabic-text" lang="ar" dir="rtl">
-                {isLoading ? 'Loading...' : (hadithIsLong ? arabicPreview.preview : arabicText)}
-              </p>
+              <div className="arabic-block">
+                <p className="arabic-text" lang="ar" dir="rtl">
+                  {isLoading ? 'Loading...' : (hadithIsLong ? arabicPreview.preview : arabicText)}
+                </p>
+                <button
+                  type="button"
+                  lang="ar"
+                  dir="rtl"
+                  onClick={() => setHadithReaderOpen(true)}
+                  disabled={!currentHadith || isLoading}
+                >
+                  اقرأ الحديث كاملاً <Icon name="arrow" size={15} />
+                </button>
+              </div>
             </div>
           </section>
 
