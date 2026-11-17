@@ -24,7 +24,32 @@ type Narrator = {
   deathPlace: string
   tabaqah: string
   tawthiq: string
-  regionRaw: string
+    regionRaw: string
+
+  // Knowledge Graph: scholars' evaluations
+  aqwal?: {
+    alemId: number
+    alem: string
+    qawl: string
+  }[]
+
+  // Knowledge Graph: narrator's teachers
+  teachers?: {
+    id: number
+    name: string
+    rank: string
+    tabaka: number
+    n: number
+  }[]
+
+  // Knowledge Graph: narrator's students
+  students?: {
+    id: number
+    name: string
+    rank: string
+    tabaka: number
+    n: number
+  }[]
 }
 
 type ProfileDraft = {
@@ -205,14 +230,17 @@ function mapNarrator(raw: any): Narrator {
       raw.death_display || (raw.death_year ? `${raw.death_year} AH` : ''),
       raw.death_place,
     ),
-    description: biographyText(raw.biography),
+    description: biographyText(raw.biography || raw.description),
     birthDisplay: raw.birth_display || '',
     birthPlace: raw.birth_place || '',
     deathDisplay: raw.death_display || (raw.death_year ? `${raw.death_year} AH` : ''),
     deathPlace: raw.death_place || '',
-    tabaqah: raw.tabaqah || '',
-    tawthiq: raw.tawthiq || '',
+        tawthiq: raw.tawthiq || '',
     regionRaw: raw.region || '',
+
+    aqwal: Array.isArray(raw.aqwal) ? raw.aqwal : [],
+    teachers: Array.isArray(raw.teachers) ? raw.teachers : [],
+    students: Array.isArray(raw.students) ? raw.students : [],
   }
 }
 
@@ -424,6 +452,9 @@ function Explorer({ onHome }: { onHome: () => void }) {
   const [loadError, setLoadError] = useState('')
   const [selectedHadithId, setSelectedHadithId] = useState<number | null>(null)
   const [selectedHadithNumber, setSelectedHadithNumber] = useState<string | null>(null)
+  const [kgChains, setKgChains] = useState<any[]>([])
+  const [selectedKgSanadId, setSelectedKgSanadId] = useState<number | null>(null)
+  const [kgHadithId, setKgHadithId] = useState<number | null>(null)
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [query, setQuery] = useState('')
   const [searchHits, setSearchHits] = useState<Narrator[]>([])
@@ -455,14 +486,65 @@ function Explorer({ onHome }: { onHome: () => void }) {
   const applyChain = (payload: { narrators?: unknown; edges?: unknown }) => {
     const mapped = unwrapList<any>(payload?.narrators).map(mapNarrator)
     const chainEdges = unwrapList<EdgeRecord>(payload?.edges)
+
     if (!mapped.length && !chainEdges.length) return
+
     setNarrators(mapped.length ? mapped : dummyNarrators)
     setEdges(chainEdges)
+
     const ordered = orderChain(chainEdges)
-    setSelectedId(ordered[Math.floor(ordered.length / 2)] ?? mapped[0]?.id ?? null)
+
+    setSelectedId(
+      ordered[Math.floor(ordered.length / 2)] ?? mapped[0]?.id ?? null
+    )
+
     setSelectedEdge(null)
   }
 
+  const loadKnowledgeGraphHadith = async (hadithId: number) => {
+    try {
+      setLoadError('')
+
+      const data = await fetchJson(
+        `/knowledge-graph/hadiths/${hadithId}/`
+      )
+
+      const chains = data.visual_isnad_chains || []
+
+      if (!chains.length) {
+        setLoadError('No Isnad chains found for this Hadith.')
+        return
+      }
+
+      const firstChain =
+        chains.find((chain: any) => chain.grade === 'صحيح') || chains[0]
+
+      setKgChains(chains)
+      setSelectedKgSanadId(firstChain.sanad_id)
+      setKgHadithId(hadithId)
+
+      applyChain(firstChain)
+
+      setSelectedHadithId(null)
+      setSelectedHadithNumber(String(data.noInBook ?? hadithId))
+
+      setCurrentHadith({
+        id: hadithId,
+        hadith_number: String(data.noInBook ?? hadithId),
+        book_title: `Knowledge Graph Collection ${data.bookId}`,
+        arabic_matn: data.matnClean || data.nass || '',
+        arabic_full: data.nass || '',
+        grade: data.hukm || firstChain.grade || '',
+      })
+
+      setSelectedEdge(null)
+      setLoadError('')
+
+    } catch (error) {
+      console.error('Knowledge Graph loading error:', error)
+      setLoadError('Could not load Knowledge Graph Hadith.')
+    }
+  }
   const loadBookHadiths = async (bookNumber: number) => {
     const payload = await fetchJson(`/hadiths/?book=${bookNumber}&compact=1&page_size=400`)
     const hadiths = unwrapList<HadithRecord>(payload)
@@ -650,7 +732,24 @@ function Explorer({ onHome }: { onHome: () => void }) {
     }
   }, [])
 
-  const chainIds = useMemo(() => orderChain(edges), [edges])
+  const chainIds = useMemo(() => {
+  const orderedIds = orderChain(edges)
+  const seen = new Set(orderedIds)
+  const allIds = [...orderedIds]
+
+  const sortedEdges = [...edges].sort((a, b) => a.sequence - b.sequence)
+
+  sortedEdges.forEach((edge) => {
+    ;[edge.teacher, edge.student].forEach((id) => {
+      if (!seen.has(id)) {
+        seen.add(id)
+        allIds.push(id)
+      }
+    })
+  })
+
+  return allIds
+}, [edges])
   const totalHadiths = books.reduce((sum, book) => sum + book.count, 0)
   const selectedBookNumber = Number(currentHadith?.in_book_reference?.match(/Book\s+(\d+)/i)?.[1] || expandedBook || 1)
   const activeBook = books.find((book) => book.number === selectedBookNumber)
@@ -662,6 +761,12 @@ function Explorer({ onHome }: { onHome: () => void }) {
   )
   const chainLayout = useMemo(() => layoutChain(chainNarrators), [chainNarrators])
   const positions = chainLayout.positions
+  const positionByNarratorId = new Map(
+  chainNarrators.map((narrator, index) => [
+    narrator.id,
+    positions[index],
+  ])
+)
   const graphScale = zoom / 100
 
   useEffect(() => {
@@ -740,37 +845,86 @@ function Explorer({ onHome }: { onHome: () => void }) {
     }
   }
 
-  const selectNarrator = (id: number) => {
-    setSelectedId(id)
-    setCatalogOpen(false)
-    setPanelOpen(true)
-    void (async () => {
-      try {
-        const raw = await fetchJson(`/narrators/${id}/`)
-        const mapped = mapNarrator(raw)
-        setNarrators((current) => {
-          const remaining = current.filter((item) => item.id !== id)
-          return [...remaining, mapped]
-        })
-      } catch {
-        /* keep the mapped list payload if the detail request fails */
-      }
-    })()
+  const fetchNarratorDetails = async (id: number): Promise<Narrator> => {
+  // Knowledge Graph narrator IDs use an offset of 1,000,000.
+  if (id >= 1000000) {
+    const rawiId = id - 1000000
+
+    const raw = await fetchJson(
+      `/knowledge-graph/rawis/${rawiId}/`
+    )
+
+    // Convert the Knowledge Graph response to the existing
+    // Visual Isnad narrator structure.
+    return mapNarrator({
+      id,
+      name: raw.nickname || raw.name,
+      arabic_name: raw.name || raw.nickname,
+      grade: raw.rank || '',
+      tawthiq: raw.rank || '',
+      tabaqah: String(raw.tabaka ?? ''),
+      region: raw.iqama || '',
+      birth_display: raw.birthYear
+        ? `${raw.birthYear} هـ`
+        : '',
+      death_display: raw.deathYear
+        ? `${raw.deathYear} هـ`
+        : '',
+      death_place: raw.deathPlace || '',
+
+      aqwal: Array.isArray(raw.aqwal) ? raw.aqwal : [],
+      teachers: Array.isArray(raw.teachers) ? raw.teachers : [],
+      students: Array.isArray(raw.students) ? raw.students : [],
+
+      description: [
+        raw.name ? `الاسم الكامل: ${raw.name}` : '',
+        raw.nickname ? `الكنية: ${raw.nickname}` : '',
+        raw.nasab ? `النسبة: ${raw.nasab}` : '',
+        raw.rank ? `التوثيق: ${raw.rank}` : '',
+        raw.iqama ? `الإقامة: ${raw.iqama}` : '',
+        raw.deathPlace ? `مكان الوفاة: ${raw.deathPlace}` : '',
+      ].filter(Boolean).join('\n'),
+    })
   }
 
-  const openNarratorPage = (person: Narrator) => {
-    setQuery('')
-    setSearchHits([])
-    setInspectedNarrator(person)
-    void (async () => {
-      try {
-        const raw = await fetchJson(`/narrators/${person.id}/`)
-        setInspectedNarrator(mapNarrator(raw))
-      } catch {
-        /* keep the search-hit payload if the detail request fails */
-      }
-    })()
-  }
+  // Keep the existing Sahih al-Bukhari API unchanged.
+  const raw = await fetchJson(`/narrators/${id}/`)
+  return mapNarrator(raw)
+}
+
+const selectNarrator = (id: number) => {
+  setSelectedId(id)
+  setCatalogOpen(false)
+  setPanelOpen(true)
+
+  void (async () => {
+    try {
+      const mapped = await fetchNarratorDetails(id)
+
+      setNarrators((current) => {
+        const remaining = current.filter((item) => item.id !== id)
+        return [...remaining, mapped]
+      })
+    } catch (error) {
+      console.error('Narrator detail fetch error:', error)
+    }
+  })()
+}
+
+const openNarratorPage = (person: Narrator) => {
+  setQuery('')
+  setSearchHits([])
+  setInspectedNarrator(person)
+
+  void (async () => {
+    try {
+      const mapped = await fetchNarratorDetails(person.id)
+      setInspectedNarrator(mapped)
+    } catch (error) {
+      console.error('Narrator biography fetch error:', error)
+    }
+  })()
+}
 
   const edgeByPair = (teacherId: number, studentId: number) =>
     edges.find((edge) => edge.teacher === teacherId && edge.student === studentId)
@@ -1039,18 +1193,22 @@ function Explorer({ onHome }: { onHome: () => void }) {
                   Read full hadith <Icon name="arrow" size={15} />
                 </button>
               </div>
-              <div className="arabic-block">
-                <p className="arabic-text" lang="ar" dir="rtl">
+
+              
+              <div className="arabic-block" dir="rtl">
+                <p className="arabic-text" lang="ar">
                   {isLoading ? 'Loading...' : (hadithIsLong ? arabicPreview.preview : arabicText)}
                 </p>
+
                 <button
+                  className="arabic-read-button"
                   type="button"
                   lang="ar"
                   dir="rtl"
                   onClick={() => setHadithReaderOpen(true)}
                   disabled={!currentHadith || isLoading}
                 >
-                  اقرأ الحديث كاملاً <Icon name="arrow" size={15} />
+                  قراءة الحديث كاملاً <span>←</span>
                 </button>
               </div>
             </div>
@@ -1058,11 +1216,61 @@ function Explorer({ onHome }: { onHome: () => void }) {
 
           <section className="visualizer">
             <div className="visualizer-toolbar">
-              <div>
-                <p className="eyebrow">TRANSMISSION PATH</p>
-                <h2>Chain of narration <span>{chainNarrators.length} nodes · {edges.length} transmissions</span></h2>
-              </div>
-            </div>
+<button
+  type="button"
+  onClick={() => void loadKnowledgeGraphHadith(17154)}
+  style={{
+    padding: '9px 14px',
+    border: '1px solid #b99a64',
+    borderRadius: '6px',
+    background: '#fffaf0',
+    color: '#54452b',
+    cursor: 'pointer',
+    fontWeight: 600,
+  }}
+>
+  Load Knowledge Graph Hadith 17154
+</button>
+  <div>
+    <p className="eyebrow">TRANSMISSION PATH</p>
+    <h2>
+      Chain of narration
+      <span>
+        {chainNarrators.length} nodes · {edges.length} transmissions
+      </span>
+    </h2>
+  </div>
+
+  {kgHadithId !== null && kgChains.length > 0 && (
+    <div className="kg-chain-selector">
+      <label htmlFor="kg-sanad-select">Select Isnad:</label>
+
+      <select
+        id="kg-sanad-select"
+        value={selectedKgSanadId ?? ''}
+        onChange={(event) => {
+          const sanadId = Number(event.target.value)
+
+          const chain = kgChains.find(
+            (item) => item.sanad_id === sanadId
+          )
+
+          if (chain) {
+            setSelectedKgSanadId(sanadId)
+            applyChain(chain)
+          }
+        }}
+      >
+        {kgChains.map((chain) => (
+          <option key={chain.sanad_id} value={chain.sanad_id}>
+            Chain {chain.sanad_id} — {chain.grade} (
+            {chain.narrators.length} narrators)
+          </option>
+        ))}
+      </select>
+    </div>
+  )}
+</div>
 
             <div className="graph-legend-row">
               <div className="graph-legend">
@@ -1115,29 +1323,36 @@ function Explorer({ onHome }: { onHome: () => void }) {
                   </g>
 
                   <g className={`transmission-edges ${tracePath ? 'tracing' : ''}`}>
-                    {chainNarrators.slice(0, -1).map((teacher, index) => {
-                      const student = chainNarrators[index + 1]
-                      const from = positions[index]
-                      const to = positions[index + 1]
-                      const edge = edgeByPair(teacher.id, student.id)
-                      const startX = from.x + 105
-                      const startY = from.y + 58
-                      const endX = to.x + 105
-                      const endY = to.y
-                      const path = `M${startX} ${startY} C${startX} ${(startY + endY) / 2}, ${endX} ${(startY + endY) / 2}, ${endX} ${endY}`
-                      return (
-                        <g
-                          key={edge?.id ?? `${teacher.id}-${student.id}`}
-                          onClick={() => setSelectedEdge(edge?.id ?? null)}
-                          className={selectedEdge === edge?.id ? 'selected' : ''}
-                        >
-                          <path className="edge-hit" d={path} />
-                          <path d={path} markerEnd="url(#arrowhead)" />
-                          <text x={(startX + endX) / 2 + 8} y={(startY + endY) / 2}>{edge?.terminology || 'عن'}</text>
-                        </g>
-                      )
-                    })}
-                  </g>
+  {edges.map((edge) => {
+    const from = positionByNarratorId.get(edge.teacher)
+    const to = positionByNarratorId.get(edge.student)
+
+    if (!from || !to) return null
+
+    const startX = from.x + 105
+    const startY = from.y + 58
+    const endX = to.x + 105
+    const endY = to.y
+
+    const middleY = (startY + endY) / 2
+
+    const path = `M${startX} ${startY} C${startX} ${middleY}, ${endX} ${middleY}, ${endX} ${endY}`
+
+    return (
+      <g
+        key={edge.id}
+        onClick={() => setSelectedEdge(edge.id)}
+        className={selectedEdge === edge.id ? 'selected' : ''}
+      >
+        <path className="edge-hit" d={path} />
+        <path d={path} markerEnd="url(#arrowhead)" />
+        <text x={(startX + endX) / 2 + 8} y={middleY}>
+          {edge.terminology || 'عن'}
+        </text>
+      </g>
+    )
+  })}
+</g>
 
                   {chainNarrators.map((narrator, index) => {
                     const position = positions[index]
@@ -1359,11 +1574,81 @@ function Explorer({ onHome }: { onHome: () => void }) {
               <div><dt>Region</dt><dd>{inspectedNarrator.location}</dd></div>
               <div><dt>Generation</dt><dd>{inspectedNarrator.era}</dd></div>
             </dl>
-            <div className="hadith-reader-body">
+                        <div className="hadith-reader-body">
               <section>
                 <h3>Biography</h3>
-                <p dir="auto">{inspectedNarrator.description || 'No biographical notes stored for this narrator yet.'}</p>
+                <p dir="auto" style={{ whiteSpace: 'pre-line' }}>
+                  {inspectedNarrator.description ||
+                    'No biographical notes stored for this narrator yet.'}
+                </p>
               </section>
+
+              {Boolean(inspectedNarrator.aqwal?.length) && (
+                <section dir="rtl" lang="ar">
+                  <h3>أقوال العلماء ({inspectedNarrator.aqwal?.length})</h3>
+
+                  {inspectedNarrator.aqwal?.map((item, index) => (
+                    <div
+                      key={`qawl-${item.alemId}-${index}`}
+                      style={{
+                        padding: '14px 0',
+                        borderBottom: '1px solid #e5e0d5',
+                      }}
+                    >
+                      <strong>{item.alem}</strong>
+                      <p style={{ lineHeight: 1.9 }}>{item.qawl}</p>
+                    </div>
+                  ))}
+                </section>
+              )}
+
+              {Boolean(inspectedNarrator.teachers?.length) && (
+                <section dir="rtl" lang="ar">
+                  <h3>شيوخ الراوي ({inspectedNarrator.teachers?.length})</h3>
+
+                  {inspectedNarrator.teachers?.map((teacher) => (
+                    <div
+                      key={`teacher-${teacher.id}`}
+                      style={{
+                        padding: '10px 0',
+                        borderBottom: '1px solid #e5e0d5',
+                      }}
+                    >
+                      <strong>{teacher.name}</strong>
+                      <p>
+                        {teacher.rank || 'درجة التوثيق غير متوفرة'}
+                        {teacher.tabaka != null
+                          ? ` — الطبقة ${teacher.tabaka}`
+                          : ''}
+                      </p>
+                    </div>
+                  ))}
+                </section>
+              )}
+
+              {Boolean(inspectedNarrator.students?.length) && (
+                <section dir="rtl" lang="ar">
+                  <h3>تلاميذ الراوي ({inspectedNarrator.students?.length})</h3>
+
+                  {inspectedNarrator.students?.map((student) => (
+                    <div
+                      key={`student-${student.id}`}
+                      style={{
+                        padding: '10px 0',
+                        borderBottom: '1px solid #e5e0d5',
+                      }}
+                    >
+                      <strong>{student.name}</strong>
+                      <p>
+                        {student.rank || 'درجة التوثيق غير متوفرة'}
+                        {student.tabaka != null
+                          ? ` — الطبقة ${student.tabaka}`
+                          : ''}
+                      </p>
+                    </div>
+                  ))}
+                </section>
+              )}
             </div>
           </article>
         </div>
