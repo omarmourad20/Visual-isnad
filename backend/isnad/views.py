@@ -35,7 +35,7 @@ BOOK_REF_RE = re.compile(r"Book\s+(\d+)", re.I)
 
 
 def hadith_by_pk(hadith_ref: str | None) -> Hadith | None:
-    if not hadith_ref:
+    if not hadith_ref or not str(hadith_ref).isdecimal():
         return None
     return Hadith.objects.filter(pk=hadith_ref).first()
 
@@ -55,7 +55,7 @@ def chain_payload(hadith: Hadith) -> dict:
     edges = list(
         TransmissionEdge.objects.filter(hadith=hadith)
         .order_by("sequence")
-        .only("id", "teacher_id", "student_id", "hadith_id", "terminology", "sequence")
+        .only("id", "teacher_id", "student_id", "hadith_id", "terminology", "sequence", "chain_index")
     )
     narrator_ids = {edge.teacher_id for edge in edges} | {edge.student_id for edge in edges}
     narrators = Narrator.objects.filter(id__in=narrator_ids).only(*COMPACT_NARRATOR_FIELDS)

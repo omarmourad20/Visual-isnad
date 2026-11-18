@@ -71,6 +71,7 @@ type EdgeRecord = {
   student: number
   terminology: string
   sequence: number
+  chain_index?: number | null
 }
 
 const PRODUCTION_API_ORIGIN = 'https://visual-isnad.onrender.com'
@@ -88,11 +89,6 @@ function resolveApiOrigin() {
 const API_ORIGIN = resolveApiOrigin()
 const API_BASE = API_ORIGIN ? `${API_ORIGIN}/api/v1` : '/api/v1'
 
-const dummyNarrators: Narrator[] = [
-  { id: 30001, initials: 'MA', name: 'Muhammad al-Bukhari', arabic: 'محمد بن إسماعيل البخاري', era: '194–256 AH', location: 'Bukhara', role: 'Compiler', grade: 'Imam, Hafiz', born: '194 AH', died: '256 AH', description: 'A leading scholar of hadith...', birthDisplay: '194 AH', birthPlace: 'Bukhara', deathDisplay: '256 AH', deathPlace: 'Bukhara', tabaqah: '194–256 AH', tawthiq: 'Imam, Hafiz', regionRaw: 'Bukhara' },
-  { id: 1, initials: 'ﷺ', name: 'Prophet Muhammad ﷺ', arabic: 'رسول الله محمد ﷺ', era: '53 BH–11 AH', location: 'Makkah · Madinah', role: 'Prophet', grade: 'Messenger of Allah', born: '53 BH', died: '11 AH', description: 'The final Messenger of Allah...', birthDisplay: '53 BH', birthPlace: 'Makkah', deathDisplay: '11 AH', deathPlace: 'Madinah', tabaqah: '53 BH–11 AH', tawthiq: 'Messenger of Allah', regionRaw: 'Makkah · Madinah' },
-]
-
 function initialsFor(name: string) {
   const cleaned = name.replace(/[ﷺ()'"]/g, ' ').trim()
   if (cleaned.toLowerCase().includes('prophet')) return 'ﷺ'
@@ -104,6 +100,7 @@ function initialsFor(name: string) {
 
 function roleOf(raw: { id: number; name?: string; grade?: string; tabaqah?: string }) {
   const blob = `${raw.name || ''} ${raw.grade || ''} ${raw.tabaqah || ''}`.toLowerCase()
+  if (raw.grade === "Unmatched isnad name") return "Unresolved"
   if (raw.id === 1 || blob.includes('rasool') || blob.includes('prophet')) return 'Prophet'
   if (blob.includes('comp.') || blob.includes('sahabi') || blob.includes('companion')) return 'Companion'
   if (raw.id === 30001 || blob.includes('compiler')) return 'Compiler'
@@ -136,7 +133,6 @@ function generationOf(person: Narrator, index: number, count: number): Generatio
     if (death <= 180) return 'successor'
     return 'scholar'
   }
-  if (index === 0) return 'prophet'
   if (index >= count - 1) return 'scholar'
   const share = index / Math.max(1, count - 1)
   if (share < 0.28) return 'companion'
@@ -216,19 +212,19 @@ function mapNarrator(raw: any): Narrator {
   }
 }
 
-function draftFromNarrator(person: Narrator): ProfileDraft {
+function draftFromNarrator(person?: Narrator): ProfileDraft {
   return {
-    name: person.name,
-    arabic_name: person.arabic,
-    grade: person.grade === 'Unrated' ? '' : person.grade,
-    tabaqah: person.tabaqah,
-    tawthiq: person.tawthiq,
-    birth_display: person.birthDisplay,
-    birth_place: person.birthPlace,
-    death_display: person.deathDisplay,
-    death_place: person.deathPlace,
-    region: person.regionRaw,
-    biography: person.description,
+    name: person?.name ?? '',
+    arabic_name: person?.arabic ?? '',
+    grade: person?.grade === 'Unrated' ? '' : (person?.grade ?? ''),
+    tabaqah: person?.tabaqah ?? '',
+    tawthiq: person?.tawthiq ?? '',
+    birth_display: person?.birthDisplay ?? '',
+    birth_place: person?.birthPlace ?? '',
+    death_display: person?.deathDisplay ?? '',
+    death_place: person?.deathPlace ?? '',
+    region: person?.regionRaw ?? '',
+    biography: person?.description ?? '',
   }
 }
 
@@ -302,24 +298,24 @@ function unwrapList<T>(payload: any): T[] {
   return []
 }
 
+function groupChains(edges: EdgeRecord[]) {
+  const chains = new Map<number, EdgeRecord[]>()
+  let legacyIndex = -1
+  let previous: EdgeRecord | undefined
+  for (const edge of [...edges].sort((a, b) => a.sequence - b.sequence || a.id - b.id)) {
+    if (edge.chain_index == null && previous?.teacher !== edge.student) legacyIndex += 1
+    const index = edge.chain_index ?? legacyIndex
+    const chain = chains.get(index) ?? []
+    chain.push(edge)
+    chains.set(index, chain)
+    previous = edge
+  }
+  return [...chains.values()]
+}
+
 function orderChain(edges: EdgeRecord[]) {
-  if (!edges.length) return [] as number[]
-  const byStudent = new Map(edges.map((edge) => [edge.student, edge]))
-  const teachers = new Set(edges.map((edge) => edge.teacher))
-  const students = new Set(edges.map((edge) => edge.student))
-  let current = [...students].find((id) => !teachers.has(id))
-  if (current == null) {
-    const first = [...edges].sort((a, b) => a.sequence - b.sequence)[0]
-    current = first?.student
-  }
-  const compilerToSource: number[] = []
-  const seen = new Set<number>()
-  while (current != null && !seen.has(current)) {
-    seen.add(current)
-    compilerToSource.push(current)
-    current = byStudent.get(current)?.teacher
-  }
-  return compilerToSource.reverse()
+  if (!edges.length) return []
+  return [edges[0].student, ...edges.map((edge) => edge.teacher)].reverse()
 }
 
 const TIER_ORDER: Generation[] = ['prophet', 'companion', 'successor', 'scholar']
@@ -418,8 +414,9 @@ function Explorer({ onHome }: { onHome: () => void }) {
   const [hadithsByBook, setHadithsByBook] = useState<Record<number, HadithRecord[]>>({})
   const [expandedBook, setExpandedBook] = useState<number | null>(1)
   const [currentHadith, setCurrentHadith] = useState<HadithRecord | null>(null)
-  const [narrators, setNarrators] = useState<Narrator[]>(dummyNarrators)
-  const [edges, setEdges] = useState<EdgeRecord[]>([])
+  const [narrators, setNarrators] = useState<Narrator[]>([])
+  const [chains, setChains] = useState<EdgeRecord[][]>([])
+  const [chainIndex, setChainIndex] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
   const [selectedHadithId, setSelectedHadithId] = useState<number | null>(null)
@@ -440,7 +437,7 @@ function Explorer({ onHome }: { onHome: () => void }) {
   const [tracePath, setTracePath] = useState(false)
   const [selectedEdge, setSelectedEdge] = useState<number | null>(null)
   const [editingProfile, setEditingProfile] = useState(false)
-  const [profileDraft, setProfileDraft] = useState<ProfileDraft>(draftFromNarrator(dummyNarrators[0]))
+  const [profileDraft, setProfileDraft] = useState<ProfileDraft>(() => draftFromNarrator())
   const [profileSaving, setProfileSaving] = useState(false)
   const [profileSaveError, setProfileSaveError] = useState('')
   const [editor, setEditor] = useState({ authenticated: false, can_edit_biographies: false, username: '', initials: '' })
@@ -452,36 +449,50 @@ function Explorer({ onHome }: { onHome: () => void }) {
   const [hadithReaderOpen, setHadithReaderOpen] = useState(false)
   const [inspectedNarrator, setInspectedNarrator] = useState<Narrator | null>(null)
 
+  const hadithRequest = useRef(0)
+
   const applyChain = (payload: { narrators?: unknown; edges?: unknown }) => {
     const mapped = unwrapList<any>(payload?.narrators).map(mapNarrator)
     const chainEdges = unwrapList<EdgeRecord>(payload?.edges)
-    if (!mapped.length && !chainEdges.length) return
-    setNarrators(mapped.length ? mapped : dummyNarrators)
-    setEdges(chainEdges)
-    const ordered = orderChain(chainEdges)
-    setSelectedId(ordered[Math.floor(ordered.length / 2)] ?? mapped[0]?.id ?? null)
+    const grouped = groupChains(chainEdges)
+    setNarrators(mapped)
+    setChains(grouped)
+    setChainIndex(0)
+    const ordered = orderChain(grouped[0] ?? [])
+    setSelectedId(ordered[Math.floor(ordered.length / 2)] ?? null)
     setSelectedEdge(null)
   }
 
   const loadBookHadiths = async (bookNumber: number) => {
-    const payload = await fetchJson(`/hadiths/?book=${bookNumber}&compact=1&page_size=400`)
-    const hadiths = unwrapList<HadithRecord>(payload)
+    const hadiths: HadithRecord[] = []
+    let page = 1
+    let payload
+    do {
+      payload = await fetchJson(`/hadiths/?book=${bookNumber}&compact=1&page_size=400&page=${page}`)
+      hadiths.push(...unwrapList<HadithRecord>(payload))
+      page += 1
+    } while (payload?.next)
     setHadithsByBook((current) => ({ ...current, [bookNumber]: hadiths }))
     return hadiths
   }
 
   const selectHadith = async (hadith: Pick<HadithRecord, 'id' | 'hadith_number'>, bookNumber?: number) => {
+    const request = ++hadithRequest.current
     setHadithReaderOpen(false)
     setCatalogOpen(false)
     setSelectedHadithId(hadith.id)
     setSelectedHadithNumber(hadith.hadith_number)
+    setCurrentHadith(null)
+    applyChain({})
     if (bookNumber != null) setExpandedBook(bookNumber)
     try {
       const detail = await fetchJson(`/hadiths/${encodeURIComponent(hadith.hadith_number)}/?chain=1`)
+      if (request !== hadithRequest.current) return
       setCurrentHadith(detail)
       applyChain(detail)
       setLoadError('')
     } catch (error) {
+      if (request !== hadithRequest.current) return
       console.error('Hadith detail fetch error:', error)
       setLoadError('Could not load this hadith.')
     }
@@ -650,6 +661,7 @@ function Explorer({ onHome }: { onHome: () => void }) {
     }
   }, [])
 
+  const edges = chains[chainIndex] ?? []
   const chainIds = useMemo(() => orderChain(edges), [edges])
   const totalHadiths = books.reduce((sum, book) => sum + book.count, 0)
   const selectedBookNumber = Number(currentHadith?.in_book_reference?.match(/Book\s+(\d+)/i)?.[1] || expandedBook || 1)
@@ -693,10 +705,17 @@ function Explorer({ onHome }: { onHome: () => void }) {
       observer.disconnect()
     }
   }, [chainLayout, selectedHadithId])
-  const selected = narrators.find((item) => item.id === selectedId) ?? chainNarrators[0] ?? dummyNarrators[0]
+  const selectChain = (index: number) => {
+    setChainIndex(index)
+    const ordered = orderChain(chains[index] ?? [])
+    setSelectedId(ordered[Math.floor(ordered.length / 2)] ?? null)
+    setSelectedEdge(null)
+  }
+  const selected = narrators.find((item) => item.id === selectedId) ?? chainNarrators[0]
   const madarId = chainNarrators[Math.floor(chainNarrators.length / 2)]?.id
 
   const startEditingProfile = () => {
+    if (!selected) return
     setProfileDraft(draftFromNarrator(selected))
     setProfileSaveError('')
     setEditingProfile(true)
@@ -826,8 +845,8 @@ function Explorer({ onHome }: { onHome: () => void }) {
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search all 14,000+ narrators..."
-            aria-label="Search hadiths and narrators"
+            placeholder="Search narrators…"
+            aria-label="Search narrators"
           />
           <Icon name="search" size={18} />
           {query && (
@@ -1061,6 +1080,17 @@ function Explorer({ onHome }: { onHome: () => void }) {
               <div>
                 <p className="eyebrow">TRANSMISSION PATH</p>
                 <h2>Chain of narration <span>{chainNarrators.length} nodes · {edges.length} transmissions</span></h2>
+                {chains.length > 1 && (
+                  <label>
+                    Isnād{' '}
+                    <select value={chainIndex} onChange={(event) => selectChain(Number(event.target.value))}>
+                      {chains.map((chain, index) => (
+                        <option key={chain[0].id} value={index}>Chain {index + 1} of {chains.length}</option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+                {!isLoading && currentHadith && !chains.length && <p>No chain was extracted for this hadith.</p>}
               </div>
             </div>
 
@@ -1120,6 +1150,7 @@ function Explorer({ onHome }: { onHome: () => void }) {
                       const from = positions[index]
                       const to = positions[index + 1]
                       const edge = edgeByPair(teacher.id, student.id)
+                      if (!edge) return null
                       const startX = from.x + 105
                       const startY = from.y + 58
                       const endX = to.x + 105
@@ -1193,7 +1224,7 @@ function Explorer({ onHome }: { onHome: () => void }) {
           </section>
         </main>
 
-        <aside className={`detail-panel ${panelOpen ? 'open' : ''}`}>
+        {selected && <aside className={`detail-panel ${panelOpen ? 'open' : ''}`}>
           <div className="panel-top">
             <span>Narrator profile</span>
             <button onClick={() => setPanelOpen(false)} aria-label="Close profile"><Icon name="close" /></button>
@@ -1308,9 +1339,9 @@ function Explorer({ onHome }: { onHome: () => void }) {
               <span>This narration</span>
             </button>
           </div>
-        </aside>
+        </aside>}
 
-        {(catalogOpen || panelOpen) && (
+        {(catalogOpen || (panelOpen && Boolean(selected))) && (
           <button
             type="button"
             className="mobile-overlay"
@@ -1322,7 +1353,7 @@ function Explorer({ onHome }: { onHome: () => void }) {
           />
         )}
 
-        {!panelOpen && (
+        {!panelOpen && selected && (
           <button className="reopen-panel" type="button" onClick={() => setPanelOpen(true)}>
             <Icon name="user" /> Narrator profile
           </button>

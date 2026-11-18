@@ -88,8 +88,8 @@ export default function Landing({ onExplore }: LandingProps) {
             <div className="landing-avatars" aria-hidden="true">
               <span>MA</span><span>SU</span><span>YI</span><span>UK</span>
             </div>
-            <p><strong>7,563</strong> narrations ready to explore</p>
-            <p><strong>14,000+</strong> narrator profiles</p>
+            <p><strong>Sahih al-Bukhari</strong> narrations</p>
+            <p><strong>Narrator profiles</strong> with biographical notes</p>
           </div>
         </div>
 
@@ -226,7 +226,7 @@ export default function Landing({ onExplore }: LandingProps) {
               Search narrators…
             </div>
             <h3>Search any narrator</h3>
-            <p>Look up more than 14,000 names from the explorer search and jump straight to that person’s record.</p>
+            <p>Search the narrator catalog and open a narrator’s record.</p>
           </article>
           <article className="landing-card">
             <span className="landing-card-num">03</span>
@@ -266,8 +266,7 @@ export default function Landing({ onExplore }: LandingProps) {
           <p className="landing-kicker">Look up any narrator</p>
           <h2>Find a narrator. Read their <em>biography.</em></h2>
           <p>
-            The explorer is not only a graph of chains. You can search more than 14,000 narrator
-            records, open a profile, and read stored biographical notes alongside dates, places,
+            Search for a narrator and read stored biographical notes alongside dates, places,
             generation, and reliability.
           </p>
           <ul>

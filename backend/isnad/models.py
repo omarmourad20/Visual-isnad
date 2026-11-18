@@ -64,6 +64,7 @@ class TransmissionEdge(models.Model):
     )
     terminology = models.CharField(max_length=100, blank=True)
     sequence = models.PositiveSmallIntegerField(default=0)
+    chain_index = models.PositiveSmallIntegerField(null=True, blank=True)
 
     class Meta:
         indexes = [
