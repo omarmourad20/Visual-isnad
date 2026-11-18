@@ -194,7 +194,7 @@ class ChronologyTests(SimpleTestCase):
 class CorrectedDatabaseApiTests(APITestCase):
     @classmethod
     def setUpTestData(cls):
-        selected = {"1", "15", "402", "402b", "1067"}
+        selected = {"1", "5", "15", "19", "94", "402", "402b", "765", "1067", "7478"}
         with TemporaryDirectory() as directory:
             source = DATA_DIR / "Sahih al-Bukhari.csv"
             subset = Path(directory) / "hadiths.csv"
@@ -205,6 +205,30 @@ class CorrectedDatabaseApiTests(APITestCase):
                     writer.writeheader()
                     writer.writerows(row for row in reader if row["Reference"].rsplit(":", 1)[-1] in selected)
             call_command("load_bukhari", bukhari=str(subset), stdout=StringIO())
+
+    def test_hadith_5_ends_with_ibn_abbas(self):
+        result = self.client.get("/api/v1/hadiths/5/?chain=1")
+        self.assertEqual(result.status_code, 200)
+        self.assertEqual([edge["teacher"] for edge in result.data["edges"]], [20040, 20469, 11399, 11050, 17])
+        self.assertIn("رَسُولُ اللَّهِ", result.data["arabic_matn"])
+        self.assertNotIn(1, {narrator["id"] for narrator in result.data["narrators"]})
+
+    def test_explicit_prophet_transmissions_end_with_prophet(self):
+        for number, student, term in ((1, 3, "سمعت"), (19, None, "قال"), (94, 19, "عن"), (765, 871, "سمعت")):
+            with self.subTest(number=number):
+                result = self.client.get(f"/api/v1/hadiths/{number}/?chain=1")
+                self.assertEqual(result.status_code, 200)
+                last = result.data["edges"][-1]
+                self.assertEqual(last["teacher"], 1)
+                self.assertEqual(last["terminology"], term)
+                if student is not None:
+                    self.assertEqual(last["student"], student)
+
+    def test_nested_question_does_not_supply_a_direct_transmission(self):
+        result = self.client.get("/api/v1/hadiths/7478/?chain=1")
+        self.assertEqual(result.status_code, 200)
+        self.assertEqual(result.data["edges"][-1]["teacher"], 17)
+        self.assertNotIn(1, {edge["teacher"] for edge in result.data["edges"]})
 
     def test_hadith_1067_and_related_endpoints(self):
         response = self.client.get("/api/v1/hadiths/1067/?chain=1")
@@ -261,10 +285,17 @@ class NarratorProfileApiTests(APITestCase):
             ),
             Narrator(id=2, name="Narrator two", arabic_name="الراوي الثاني", biography="Recitation/Quran"),
             Narrator(id=9, name="Narrator nine", arabic_name="الراوي التاسع"),
+            Narrator(id=10, name="Narrator ten", arabic_name="الراوي العاشر"),
+            Narrator(id=800000, name="Unresolved narrator"),
+        ])
+        hadith = Hadith.objects.create(hadith_number="1")
+        TransmissionEdge.objects.bulk_create([
+            TransmissionEdge(hadith=hadith, teacher_id=1, student_id=student, sequence=index)
+            for index, student in enumerate((2, 10, 10, 800000))
         ])
 
     def test_detail_batches_related_names_preserves_order_and_reports_missing_ids(self):
-        with self.assertNumQueries(2):
+        with self.assertNumQueries(3):
             response = self.client.get("/api/v1/narrators/1/")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["teachers_inds"], "9, 2, 9, 404, NA, -1, 2147483648")
@@ -274,13 +305,15 @@ class NarratorProfileApiTests(APITestCase):
             {"id": 404, "name": None, "arabic_name": None},
         ])
         self.assertEqual([record["id"] for record in response.data["students"]], [2, 9])
+        self.assertEqual(response.data["students_inds"], "2, 9")
+        self.assertEqual([record["id"] for record in response.data["transmission_students"]], [2, 10])
         self.assertIn("الراوي الأول".encode("utf-8"), response.content)
         self.assertEqual(response.json()["biography"], "هذه ترجمة عربية محفوظة.\nوفيها سطر ثانٍ.")
         self.assertEqual(response.data["aliases"], "أبو زيد")
         self.assertEqual(response.data["parents"], "زيد")
 
     def test_related_detail_and_compact_search_are_independent(self):
-        with self.assertNumQueries(1):
+        with self.assertNumQueries(2):
             related = self.client.get("/api/v1/narrators/2/")
         self.assertEqual(related.status_code, 200)
         self.assertEqual(related.data["biography"], "Recitation/Quran")

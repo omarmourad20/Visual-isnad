@@ -62,3 +62,11 @@ The separate legacy reproduction stored 7,252 hadiths and 41,123 edges. The cand
 The primary CSV refers to scholar 20208 by ID but omits the scholar's own row. The supplement restores his full name, the aliases Ibn ʿUlayya and Abū Bashr, dates, and the teacher and student IDs from the source profile. In Hadith 15, the commentary identifies Yaʿqūb as al-Dawraqī. The catalog links him to both al-Bukhari and Ibn ʿUlayya, and links Ibn ʿUlayya to ʿAbd al-ʿAzīz ibn Ṣuhayb. Both routes are covered by the API regression test. [Source profile](https://muslimscholars.info/manage.php?ID=20208&submit=scholar)
 
 The follow-up build retains all 7,277 references and 39,417 edges, with 31,209 matched and 8,398 unresolved positions. There are 8,333 edges with an unresolved teacher and 39 hadiths without a stored route. These counts describe matching and coverage. They do not measure identity accuracy for every route.
+
+## Prophet transmission evidence
+
+Hadiths 5 and 1067 describe the Prophet's actions and their explicit imported routes end at Ibn ʿAbbās and Ibn Masʿūd respectively. Explicit source markers such as `عن النبي` in Hadith 94 and `سمعت رسول الله` in Hadith 765 supply a transmission edge. The importer recognizes these markers even when the opening of the report follows the title. Nested questions such as the dialogue in Hadith 7478 require separate reconstruction.
+
+The audit of a new SQLite build compared with the reviewed baseline found 189 hadiths that gained an edge to the Prophet and six whose earlier association was taken from embedded dialogue. It counted 2,098 hadiths with a Prophet edge, 58 with multiple stored routes, 39 without a stored route, and 8,084 unresolved teacher edges. Structural validation passed. The remaining routes need source review before attributing any additional links.
+
+Narrator detail preserves the catalog student list and separately exposes named narrators linked by imported Bukhari edges. Narrator 1 has 15 catalog students and 119 named graph links in the rebuilt database. An existing database can serve the profile and graph changes without schema changes. To see the importer changes, use the separate rebuild procedure above.

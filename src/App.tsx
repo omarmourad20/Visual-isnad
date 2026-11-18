@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Landing from './Landing'
+import { groupChains, orderChain, type EdgeRecord } from './transmissionPaths'
 import NarratorProfile, { narratorDate, recordedText, type NarratorRecord, type NarratorReference } from './NarratorProfile'
 
 type IconName =
@@ -58,14 +59,6 @@ type BookRecord = {
   count: number
 }
 
-type EdgeRecord = {
-  id: number
-  teacher: number
-  student: number
-  terminology: string
-  sequence: number
-  chain_index?: number | null
-}
 
 const PRODUCTION_API_ORIGIN = 'https://visual-isnad.onrender.com'
 
@@ -272,26 +265,6 @@ function unwrapList<T>(payload: any): T[] {
   if (Array.isArray(payload)) return payload
   if (Array.isArray(payload?.results)) return payload.results
   return []
-}
-
-function groupChains(edges: EdgeRecord[]) {
-  const chains = new Map<number, EdgeRecord[]>()
-  let legacyIndex = -1
-  let previous: EdgeRecord | undefined
-  for (const edge of [...edges].sort((a, b) => a.sequence - b.sequence || a.id - b.id)) {
-    if (edge.chain_index == null && previous?.teacher !== edge.student) legacyIndex += 1
-    const index = edge.chain_index ?? legacyIndex
-    const chain = chains.get(index) ?? []
-    chain.push(edge)
-    chains.set(index, chain)
-    previous = edge
-  }
-  return [...chains.values()]
-}
-
-function orderChain(edges: EdgeRecord[]) {
-  if (!edges.length) return []
-  return [edges[0].student, ...edges.map((edge) => edge.teacher)].reverse()
 }
 
 const TIER_ORDER: Generation[] = ['prophet', 'companion', 'successor', 'scholar']
@@ -765,6 +738,7 @@ function Explorer({ onHome }: { onHome: () => void }) {
         ...raw,
         teachers: selected.record.teachers,
         students: selected.record.students,
+        transmission_students: selected.record.transmission_students,
       })
       setNarratorDetails(current => ({ ...current, [id]: mapped }))
       setNarrators((current) => {

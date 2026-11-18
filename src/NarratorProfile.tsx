@@ -25,6 +25,7 @@ export type NarratorRecord = NarratorReference & {
   students_inds?: string
   teachers?: NarratorReference[]
   students?: NarratorReference[]
+  transmission_students?: NarratorReference[]
 }
 
 export function recordedText(value?: string | null) {
@@ -150,7 +151,10 @@ export default function NarratorProfile({ record, status, onOpen, onRetry }: {
           )}
           <section aria-label="Narrator relationships">
             <NarratorRelationships label="Teachers" entries={relationshipList(record.teachers, record.teachers_inds)} onOpen={onOpen} />
-            <NarratorRelationships label="Students" entries={relationshipList(record.students, record.students_inds)} onOpen={onOpen} />
+            <NarratorRelationships label="Catalog students" entries={relationshipList(record.students, record.students_inds)} onOpen={onOpen} />
+            {!!record.transmission_students?.length && (
+              <NarratorRelationships label="Narrators linked in imported Bukhari chains" entries={record.transmission_students} onOpen={onOpen} />
+            )}
           </section>
         </>
       )}
