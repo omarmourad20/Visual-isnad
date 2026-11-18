@@ -75,6 +75,61 @@ class ChainMatcherTests(SimpleTestCase):
         self.assertEqual(matcher.resolve(chain), [(102, True), (103, True)])
         self.assertEqual(matcher.resolve(chain[:1]), [(None, False)])
 
+    def test_recorded_alias_disambiguates_an_earlier_name(self):
+        narrators = {
+            101: Narrator(arabic_name="زيد بن سعد"),
+            102: Narrator(arabic_name="زيد بن سعد بن سالم", teachers_inds="103"),
+            103: Narrator(arabic_name="عمرو بن صالح", aliases="عمرو بن صالح | ابن زينب", teachers_inds="105"),
+            104: Narrator(arabic_name="حسن بن زينب"),
+            105: Narrator(arabic_name="سالم بن مالك"),
+            BUKHARI_ID: Narrator(teachers_inds="102"),
+        }
+        matcher = ChainMatcher(narrators)
+        chain = [("زيد بن سعد", "حدثنا"), ("ابن زينب", "عن"), ("سالم بن مالك", "عن")]
+        self.assertEqual([sid for sid, _ in matcher.resolve(chain)], [102, 103, 105])
+
+    def test_two_documented_aliases_still_require_disambiguation(self):
+        narrators = {
+            101: Narrator(arabic_name="زيد بن سعد", aliases=" | أبو يحيى"),
+            102: Narrator(arabic_name="عمرو بن صالح", aliases=" | أبو يحيى"),
+        }
+        self.assertEqual(ChainMatcher(narrators).resolve([("أبي يحيى", "عن")]), [(None, False)])
+
+    def test_explicit_kunya_does_not_index_its_bare_given_name(self):
+        matcher = ChainMatcher({
+            101: Narrator(arabic_name="إسماعيل بن إبراهيم", aliases="إسماعيل بن إبراهيم | أبو بشر"),
+            BUKHARI_ID: Narrator(teachers_inds="101"),
+        })
+        self.assertEqual(matcher.resolve([("أبي بشر", "حدثنا")]), [(101, True)])
+        self.assertEqual(matcher.resolve([("بشر", "حدثنا")]), [(None, False)])
+
+    def test_advance_matches_exhaustive_search_in_both_directions(self):
+        matcher = ChainMatcher({
+            101: Narrator(birth_year=140, teachers_inds="104"),
+            102: Narrator(birth_year=80, teachers_inds="104", grade="1st generation"),
+            103: Narrator(birth_year=90),
+            104: Narrator(death_year=130, students_inds="101, 102", grade="3rd generation"),
+        })
+        student_scores = {101: 20, 102: 8, 103: 10, None: 2}
+        teacher_scores = {104: 6, None: 1}
+        for backward, current, previous, relatives in (
+            (False, teacher_scores, student_scores, matcher.students),
+            (True, student_scores, teacher_scores, matcher.teachers),
+        ):
+            with self.subTest(backward=backward):
+                expected = {}
+                for candidate, score in current.items():
+                    expected[candidate] = score + max(
+                        prior + relatives.get(candidate, {}).get(neighbor, 0)
+                        + matcher.chronology_score(
+                            *((candidate, neighbor) if backward else (neighbor, candidate))
+                        )
+                        for neighbor, prior in previous.items()
+                        if candidate != neighbor or candidate is None
+                    )
+                self.assertEqual(matcher.advance(current, previous, relatives, backward=backward), expected)
+        self.assertEqual(matcher.advance(teacher_scores, student_scores, matcher.students)[104], 19)
+
     def test_repeated_narrator_is_left_unresolved(self):
         narrators = {
             101: Narrator(arabic_name="زيد بن عمرو"),
@@ -173,8 +228,10 @@ class CorrectedDatabaseApiTests(APITestCase):
             self.assertEqual(edges[-1]["teacher"], 1)
             self.assertEqual([edge["teacher"] for edge in edges[:-1]],
                              [edge["student"] for edge in edges[1:]])
-            if index == 1:
-                self.assertEqual([edge["teacher"] for edge in edges], [20404, 20020, 11019, 19, 1])
+            expected_route = (
+                [30400, 20208, 11295, 19, 1] if index == 0 else [20404, 20020, 11019, 19, 1]
+            )
+            self.assertEqual([edge["teacher"] for edge in edges], expected_route)
 
     def test_variant_reference_has_its_own_record_and_edges(self):
         base = self.client.get("/api/v1/hadiths/402/?chain=1")

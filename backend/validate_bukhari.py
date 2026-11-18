@@ -9,7 +9,7 @@ from contextlib import closing
 from pathlib import Path
 
 
-DATA = Path(__file__).resolve().parent.parent / "data"
+from rawis_catalog import DATA_DIR, read_rawis
 UNRESOLVED_ID = 800000
 EXPECTED_1067 = [30001, 30160, 20278, 20020, 11049, 11054, 16]
 
@@ -59,8 +59,7 @@ def date_from_db(year, display):
 
 
 def validate(db, rawis, bukhari):
-    with rawis.open(encoding="utf-8-sig", newline="") as source:
-        rawis_rows = list(csv.DictReader(source))
+    rawis_rows = [row for _, row in read_rawis(rawis)]
     ids = Counter(int(row["scholar_indx"]) for row in rawis_rows)
     source_relationships = {
         int(row["scholar_indx"]): tuple(row.get(field) or "" for field in ("parents", "teachers_inds", "students_inds"))
@@ -162,8 +161,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("database", type=Path)
     parser.add_argument("--baseline", type=Path)
-    parser.add_argument("--rawis", type=Path, default=DATA / "all_rawis.csv")
-    parser.add_argument("--bukhari", type=Path, default=DATA / "Sahih al-Bukhari.csv")
+    parser.add_argument("--rawis", type=Path, default=DATA_DIR / "all_rawis.csv")
+    parser.add_argument("--bukhari", type=Path, default=DATA_DIR / "Sahih al-Bukhari.csv")
     args = parser.parse_args()
     with read_only(args.database) as db:
         report = validate(db, args.rawis, args.bukhari)

@@ -4,12 +4,12 @@ import re
 from collections import Counter, defaultdict
 from pathlib import Path
 
-from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
 from isnad.models import Hadith, Narrator, TransmissionEdge
 from isnad.scholar_bios import load_cache
+from rawis_catalog import DATA_DIR, read_rawis
 
 INVISIBLE = dict.fromkeys(map(ord, "\u200f\u200e\u200c\u200d\u200b"), None)
 TASHKEEL_RE = re.compile(r"[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06ED]")
@@ -35,9 +35,6 @@ TERM_SPLIT_RE = re.compile(r"\bو?(" + "|".join(sorted(TERMS)) + r")\s+")
 SKIP_NAME_KEYS = {"هرقل", "جبريل", "الملك", "و", "ح"}
 TAHWIL_RE = re.compile(r"(?<!\w)ح[\u064b-\u065f]*(?![\w\u064b-\u065f])")
 PROPHET_REPORT_RE = re.compile(r"^(النبي|رسول الله)(?:$|\s+(?:قال|يقول)\b)")
-
-DATA_DIR = Path(settings.BASE_DIR).parent / "data"
-
 
 def clean_text(value: str) -> str:
     if not value:
@@ -318,9 +315,10 @@ class ChainMatcher:
         self.collector = BUKHARI_ID if BUKHARI_ID in narrators else None
 
         for narrator_id, narrator in narrators.items():
+            raw_name, *documented_aliases = narrator.aliases.split(" | ")
             raw_arabic = re.findall(
                 r"[\u0621-\u06ff]+(?:\s+[\u0621-\u06ff]+)*",
-                HONORIFIC_RE.sub(" ", narrator.aliases),
+                HONORIFIC_RE.sub(" ", raw_name),
             )
             names = {narrator.arabic_name, narrator.name, *raw_arabic}
             birth = signed_hijri(narrator.birth_year, narrator.birth_display)
@@ -333,6 +331,14 @@ class ChainMatcher:
                 self.generations[narrator_id] = int(generation.group(1))
             for name in names:
                 self.index_name(narrator_id, name_key(name))
+            for alias in documented_aliases:
+                # A documented kunya is evidence as a whole; a word pulled
+                # from it can be another person's given name.
+                key = name_key(alias)
+                if key:
+                    score = self.exact_name_score(key.split())
+                    posting = self.names[key]
+                    posting[narrator_id] = max(score, posting.get(narrator_id, 0))
 
             for teacher_id in parse_id_list(narrator.teachers_inds):
                 if teacher_id in narrators:
@@ -355,6 +361,11 @@ class ChainMatcher:
         self.teachers[student_id][teacher_id] = score
         self.students[teacher_id][student_id] = score
 
+    @staticmethod
+    def exact_name_score(words):
+        substantive = len(words) - int(words[0] in {"ابو", "ام", "عبد", "بن"})
+        return 12 if substantive > 1 else 3
+
     def index_name(self, narrator_id, full_name):
         words = full_name.split()
         for start in range(len(words)):
@@ -365,7 +376,7 @@ class ChainMatcher:
                 key = " ".join(span)
                 substantive = len(span) - int(span[0] in {"ابو", "ام", "عبد", "بن"})
                 if key == full_name:
-                    score = 12 if substantive > 1 else 3
+                    score = self.exact_name_score(span)
                 elif start == 0:
                     score = 9 if substantive > 1 else 2
                 else:
@@ -431,6 +442,8 @@ class ChainMatcher:
 
             if not father or (narrator_id is None and not backward):
                 for sid in highest:
+                    # A chronology adjustment is never positive. Link bonuses
+                    # are evaluated separately below, including after this cutoff.
                     if previous[sid] <= best:
                         break
                     if sid != narrator_id or sid is None:
@@ -514,7 +527,9 @@ class ChainMatcher:
         result = []
         student_id = collector
         seen = {collector}
-        for key, narrator_id, margin in zip(keys, reversed(resolved), reversed(margins), strict=True):
+        for key, layer, narrator_id, margin in zip(
+            keys, layers, reversed(resolved), reversed(margins), strict=True
+        ):
             father = key in FATHER_KEYS
             if father and (student_id is None or self.fathers.get(student_id) != narrator_id):
                 narrator_id = None
@@ -532,6 +547,8 @@ class ChainMatcher:
             if audit is not None:
                 if narrator_id is None:
                     audit["unresolved"] += 1
+                    if not father and len(layer) > 1 and margin is not None and margin < self.MIN_MARGIN:
+                        audit["insufficient score margin"] += 1
                 elif margin is None or margin == float("inf"):
                     audit["no viable alternative"] += 1
                 elif margin >= 6:
@@ -600,47 +617,45 @@ class Command(BaseCommand):
         biographies = biographies or {}
         by_id: dict[int, Narrator] = {}
 
-        with path.open(encoding="utf-8-sig", newline="") as handle:
-            reader = csv.DictReader(handle)
-            for row in reader:
-                scholar_id = parse_int(row.get("scholar_indx"))
-                if scholar_id is None or not 0 < scholar_id < UNMATCHED_ID_START:
-                    raise CommandError(f"Invalid narrator ID on rawis CSV line {reader.line_num}.")
-                if scholar_id in by_id:
-                    raise CommandError(f"Duplicate narrator ID {scholar_id} on rawis CSV line {reader.line_num}.")
-                raw_name = row.get("name") or ""
-                english = extract_english_name(raw_name) or raw_name[:255]
-                arabic = extract_arabic_span(raw_name)
-                birth_year = parse_int(row.get("birth_date_hijri"))
-                death_year = parse_int(row.get("death_date_hijri"))
-                grade = (row.get("grade") or "")[:255]
-                generation = ""
-                gen_match = GENERATION_RE.search(grade)
-                if gen_match:
-                    generation = gen_match.group(1)[:255]
+        for source, row in read_rawis(path):
+            scholar_id = parse_int(row.get("scholar_indx"))
+            if scholar_id is None or not 0 < scholar_id < UNMATCHED_ID_START:
+                raise CommandError(f"Invalid narrator ID in {source.name}.")
+            if scholar_id in by_id:
+                raise CommandError(f"Duplicate narrator ID {scholar_id} in {source.name}.")
+            raw_name = row.get("name") or ""
+            english = extract_english_name(raw_name) or raw_name[:255]
+            arabic = extract_arabic_span(raw_name)
+            birth_year = parse_int(row.get("birth_date_hijri"))
+            death_year = parse_int(row.get("death_date_hijri"))
+            grade = (row.get("grade") or "")[:255]
+            generation = ""
+            gen_match = GENERATION_RE.search(grade)
+            if gen_match:
+                generation = gen_match.group(1)[:255]
 
-                narrator = Narrator(
-                    id=scholar_id,
-                    name=english,
-                    arabic_name=arabic[:255],
-                    aliases=raw_name,
-                    birth_year=birth_year,
-                    death_year=death_year,
-                    birth_display=hijri_display(row.get("birth_date") or "", birth_year, "BH" if birth_year and "BH" in (row.get("birth_date_place") or "") else "AH"),
-                    death_display=hijri_display(row.get("death_date") or row.get("death_date_place") or "", death_year, "AH"),
-                    birth_place=(row.get("birth_place") or "")[:255],
-                    death_place=(row.get("death_place") or "")[:255],
-                    tabaqah=generation or grade[:255],
-                    region=(row.get("places_of_stay") or "")[:255],
-                    tawthiq=grade[:255],
-                    grade=grade,
-                    tags=row.get("tags") or "",
-                    biography=biographies.get(str(scholar_id)) or row.get("area_of_interest") or "",
-                    parents=row.get("parents") or "",
-                    teachers_inds=row.get("teachers_inds") or "",
-                    students_inds=row.get("students_inds") or "",
-                )
-                by_id[scholar_id] = narrator
+            narrator = Narrator(
+                id=scholar_id,
+                name=english,
+                arabic_name=arabic[:255],
+                aliases=" | ".join(filter(None, (raw_name, row.get("aliases_arabic")))),
+                birth_year=birth_year,
+                death_year=death_year,
+                birth_display=hijri_display(row.get("birth_date") or "", birth_year, "BH" if birth_year and "BH" in (row.get("birth_date_place") or "") else "AH"),
+                death_display=hijri_display(row.get("death_date") or row.get("death_date_place") or "", death_year, "AH"),
+                birth_place=(row.get("birth_place") or "")[:255],
+                death_place=(row.get("death_place") or "")[:255],
+                tabaqah=generation or grade[:255],
+                region=(row.get("places_of_stay") or "")[:255],
+                tawthiq=grade[:255],
+                grade=grade,
+                tags=row.get("tags") or "",
+                biography=biographies.get(str(scholar_id)) or row.get("area_of_interest") or "",
+                parents=row.get("parents") or "",
+                teachers_inds=row.get("teachers_inds") or "",
+                students_inds=row.get("students_inds") or "",
+            )
+            by_id[scholar_id] = narrator
 
         Narrator.objects.bulk_create(list(by_id.values()), batch_size=1000)
         return by_id

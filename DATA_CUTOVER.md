@@ -6,7 +6,7 @@ The React explorer requests hadiths, narrator profiles, and chains from Django R
 
 Django uses `DATABASE_URL` when set and defaults to SQLite otherwise. Check the active deployment configuration privately to identify the database engine and storage. The cloud clone had no active database or `DATABASE_URL`.
 
-The rebuild uses `data/Sahih al-Bukhari.csv` for hadiths and `data/all_rawis.csv` for canonical narrator identities and relationship evidence. It applies nonempty biographies from `data/muslimscholars_bios.json` by scholar ID when using the bundled rawis catalog. The separate vocalized commentary CSV remains a research reference. Its row numbering differs from the API references, so it is unsuitable as a direct replacement keyed by row number. The existing imported narrator assignments and edge rows are the legacy data being replaced.
+The rebuild uses `data/Sahih al-Bukhari.csv` for hadiths and `data/all_rawis.csv` for canonical narrator identities and relationship evidence. The bundled catalog also loads `data/rawis_supplement.csv` for independently documented records missing from the primary export. The loader and validator use the same source rows. A custom `--rawis` file is read on its own. It applies nonempty biographies from `data/muslimscholars_bios.json` by scholar ID when using the bundled rawis catalog. The separate vocalized commentary CSV remains a research reference. Its row numbering differs from the API references, so it is unsuitable as a direct replacement keyed by row number. The existing imported narrator assignments and edge rows are the legacy data being replaced.
 
 ## Rebuild and validate a separate database
 
@@ -56,3 +56,9 @@ if ($null -eq $priorDatabaseUrl) {
 The isolated build preserved all 7,277 hadith references and 24,326 canonical IDs, applied 11,880 cached biographies, and produced 39,417 edges. It recorded 8,478 unresolved positions and 39 hadiths without a persisted route. Fifty-eight hadiths have multiple stored routes. Hadith 1067 resolves to `30001 → 30160 → 20278 → 20020 → 11049 → 11054 → 16`. Five links appear in both relationship lists. The Shuʿbah–Abū Isḥāq link appears in Abū Isḥāq's students list.
 
 The separate legacy reproduction stored 7,252 hadiths and 41,123 edges. The candidate retains every source reference and canonical scholar ID present in that reproduction and restores 25 missing references. The candidate reports more uncertainty. The structural checks passed. The regression tests establish identity accuracy for the sampled routes. Inline parallel phrasing and implicit continuations still require review. The active database was unavailable for backup and comparison in the cloud workspace.
+
+## Narrator catalog follow-up
+
+The primary CSV refers to scholar 20208 by ID but omits the scholar's own row. The supplement restores his full name, the aliases Ibn ʿUlayya and Abū Bashr, dates, and the teacher and student IDs from the source profile. In Hadith 15, the commentary identifies Yaʿqūb as al-Dawraqī. The catalog links him to both al-Bukhari and Ibn ʿUlayya, and links Ibn ʿUlayya to ʿAbd al-ʿAzīz ibn Ṣuhayb. Both routes are covered by the API regression test. [Source profile](https://muslimscholars.info/manage.php?ID=20208&submit=scholar)
+
+The follow-up build retains all 7,277 references and 39,417 edges, with 31,209 matched and 8,398 unresolved positions. There are 8,333 edges with an unresolved teacher and 39 hadiths without a stored route. These counts describe matching and coverage. They do not measure identity accuracy for every route.
