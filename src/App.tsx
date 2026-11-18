@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Landing from './Landing'
+import NarratorProfile, { narratorDate, recordedText, type NarratorRecord, type NarratorReference } from './NarratorProfile'
 
 type IconName =
   | 'branch' | 'arrow' | 'book' | 'chevron' | 'close'
@@ -15,16 +16,8 @@ type Narrator = {
   location: string
   role: string
   grade: string
-  born: string
   died: string
-  description: string
-  birthDisplay: string
-  birthPlace: string
-  deathDisplay: string
-  deathPlace: string
-  tabaqah: string
-  tawthiq: string
-  regionRaw: string
+  record: NarratorRecord
 }
 
 type ProfileDraft = {
@@ -117,9 +110,11 @@ const GENERATION_RANK: Record<Generation, number> = {
   scholar: 3,
 }
 
-function deathYearAh(person: { died?: string; deathDisplay?: string }) {
-  const match = `${person.died || ''} ${person.deathDisplay || ''}`.match(/(\d+)\s*AH/i)
-  return match ? Number(match[1]) : null
+function deathYearAh(person: Narrator) {
+  const match = /(^|\s)(\d+)\s*AH\b/i.exec(person.record.death_display ?? '')
+  if (match) return Number(match[2])
+  const year = person.record.death_year
+  return !person.record.death_display && year != null && year > 0 ? year : null
 }
 
 function generationOf(person: Narrator, index: number, count: number): Generation {
@@ -174,57 +169,38 @@ function previewText(value: string, wordLimit: number) {
   return { preview: `${words.slice(0, wordLimit).join(' ')}…`, truncated: true }
 }
 
-function biographyText(value?: string) {
-  const text = (value || '').trim()
-  if (!text) return ''
-  const looksLikeInterests = /Tafsir\/Quran|Narrator\[Grade:/.test(text) && !text.slice(0, 90).includes('.')
-  if (looksLikeInterests) return ''
-  const arabic = (text.match(/[\u0600-\u06FF]/g) || []).length
-  const latin = (text.match(/[A-Za-z]/g) || []).length
-  if (arabic >= 12 && arabic >= latin) return ''
-  return text
-}
-
-function mapNarrator(raw: any): Narrator {
-  const name = raw.name || raw.arabic_name || 'Unknown'
+function mapNarrator(raw: NarratorRecord): Narrator {
+  const english = recordedText(raw.name)
+  const arabic = recordedText(raw.arabic_name)
+  const name = english || arabic || `Narrator #${raw.id}`
   return {
     id: raw.id,
     initials: initialsFor(name),
     name,
-    arabic: raw.arabic_name || raw.name || '',
-    era: raw.tabaqah || raw.grade || 'Unknown',
+    arabic,
+    era: recordedText(raw.tabaqah) || recordedText(raw.grade) || 'Unknown',
     location: formatPlaces(raw.region) || formatPlaces(raw.birth_place) || 'Unknown',
-    role: roleOf(raw),
-    grade: raw.grade || raw.tawthiq || 'Unrated',
-    born: joinYearAndPlace(raw.birth_display, raw.birth_place),
-    died: joinYearAndPlace(
-      raw.death_display || (raw.death_year ? `${raw.death_year} AH` : ''),
-      raw.death_place,
-    ),
-    description: biographyText(raw.biography),
-    birthDisplay: raw.birth_display || '',
-    birthPlace: raw.birth_place || '',
-    deathDisplay: raw.death_display || (raw.death_year ? `${raw.death_year} AH` : ''),
-    deathPlace: raw.death_place || '',
-    tabaqah: raw.tabaqah || '',
-    tawthiq: raw.tawthiq || '',
-    regionRaw: raw.region || '',
+    role: roleOf({ ...raw, name: english }),
+    grade: recordedText(raw.grade) || recordedText(raw.tawthiq) || 'Unrated',
+    died: joinYearAndPlace(narratorDate(raw.death_display, raw.death_year), raw.death_place),
+    record: raw,
   }
 }
 
 function draftFromNarrator(person?: Narrator): ProfileDraft {
+  const record = person?.record
   return {
-    name: person?.name ?? '',
-    arabic_name: person?.arabic ?? '',
-    grade: person?.grade === 'Unrated' ? '' : (person?.grade ?? ''),
-    tabaqah: person?.tabaqah ?? '',
-    tawthiq: person?.tawthiq ?? '',
-    birth_display: person?.birthDisplay ?? '',
-    birth_place: person?.birthPlace ?? '',
-    death_display: person?.deathDisplay ?? '',
-    death_place: person?.deathPlace ?? '',
-    region: person?.regionRaw ?? '',
-    biography: person?.description ?? '',
+    name: record?.name ?? '',
+    arabic_name: record?.arabic_name ?? '',
+    grade: record?.grade ?? '',
+    tabaqah: record?.tabaqah ?? '',
+    tawthiq: record?.tawthiq ?? '',
+    birth_display: record?.birth_display ?? '',
+    birth_place: record?.birth_place ?? '',
+    death_display: record?.death_display ?? '',
+    death_place: record?.death_place ?? '',
+    region: record?.region ?? '',
+    biography: record?.biography ?? '',
   }
 }
 
@@ -448,11 +424,27 @@ function Explorer({ onHome }: { onHome: () => void }) {
   const [loginBusy, setLoginBusy] = useState(false)
   const [hadithReaderOpen, setHadithReaderOpen] = useState(false)
   const [inspectedNarrator, setInspectedNarrator] = useState<Narrator | null>(null)
+  const [narratorDetails, setNarratorDetails] = useState<Partial<Record<number, Narrator | 'error'>>>({})
+  const requestedDetails = useRef(new Set<number>())
+  const narratorDialog = useRef<HTMLElement>(null)
+
+  const fetchNarratorDetails = useCallback((id: number) => {
+    if (requestedDetails.current.has(id)) return
+    requestedDetails.current.add(id)
+    void fetchJson(`/narrators/${id}/`)
+      .then(raw => {
+        setNarratorDetails(current => ({ ...current, [id]: mapNarrator(raw) }))
+      })
+      .catch(() => {
+        requestedDetails.current.delete(id)
+        setNarratorDetails(current => ({ ...current, [id]: 'error' }))
+      })
+  }, [])
 
   const hadithRequest = useRef(0)
 
   const applyChain = (payload: { narrators?: unknown; edges?: unknown }) => {
-    const mapped = unwrapList<any>(payload?.narrators).map(mapNarrator)
+    const mapped = unwrapList<NarratorRecord>(payload?.narrators).map(mapNarrator)
     const chainEdges = unwrapList<EdgeRecord>(payload?.edges)
     const grouped = groupChains(chainEdges)
     setNarrators(mapped)
@@ -562,7 +554,7 @@ function Explorer({ onHome }: { onHome: () => void }) {
     const handle = window.setTimeout(async () => {
       try {
         const payload = await fetchJson(`/narrators/?search=${encodeURIComponent(query.trim())}&page_size=12`)
-        setSearchHits(unwrapList<any>(payload).map(mapNarrator))
+        setSearchHits(unwrapList<NarratorRecord>(payload).map(mapNarrator))
       } catch {
         setSearchHits(
           narrators.filter((item) =>
@@ -711,11 +703,35 @@ function Explorer({ onHome }: { onHome: () => void }) {
     setSelectedId(ordered[Math.floor(ordered.length / 2)] ?? null)
     setSelectedEdge(null)
   }
-  const selected = narrators.find((item) => item.id === selectedId) ?? chainNarrators[0]
+  const selectedSummary = narrators.find((item) => item.id === selectedId) ?? chainNarrators[0]
+  const selectedDetail = selectedSummary && narratorDetails[selectedSummary.id]
+  const selected = selectedDetail && selectedDetail !== 'error' ? selectedDetail : selectedSummary
+  const inspectedDetail = inspectedNarrator && narratorDetails[inspectedNarrator.id]
+  const inspected = inspectedDetail && inspectedDetail !== 'error' ? inspectedDetail : inspectedNarrator
+  const selectedProfileId = selected?.id
+  const inspectedProfileId = inspected?.id
+
+  useEffect(() => {
+    if (selectedProfileId != null) fetchNarratorDetails(selectedProfileId)
+  }, [fetchNarratorDetails, selectedProfileId])
+
+  useEffect(() => {
+    if (inspectedProfileId == null) return
+    fetchNarratorDetails(inspectedProfileId)
+    if (narratorDialog.current) {
+      narratorDialog.current.scrollTop = 0
+      narratorDialog.current.focus()
+    }
+  }, [fetchNarratorDetails, inspectedProfileId])
+
+  const retryNarratorDetails = (id: number) => {
+    setNarratorDetails(current => ({ ...current, [id]: undefined }))
+    fetchNarratorDetails(id)
+  }
   const madarId = chainNarrators[Math.floor(chainNarrators.length / 2)]?.id
 
   const startEditingProfile = () => {
-    if (!selected) return
+    if (!selectedDetail || selectedDetail === 'error' || !selected) return
     setProfileDraft(draftFromNarrator(selected))
     setProfileSaveError('')
     setEditingProfile(true)
@@ -726,29 +742,33 @@ function Explorer({ onHome }: { onHome: () => void }) {
   }
 
   const saveProfile = async () => {
-    if (selectedId == null) return
+    if (!selected) return
+    const { id } = selected
+    const original = draftFromNarrator(selected)
+    const changedFields = Object.fromEntries(
+      (Object.keys(profileDraft) as (keyof ProfileDraft)[])
+        .filter(field => profileDraft[field] !== original[field])
+        .map(field => [field, profileDraft[field]]),
+    )
+    if (!Object.keys(changedFields).length) {
+      setEditingProfile(false)
+      return
+    }
     setProfileSaving(true)
     setProfileSaveError('')
     try {
-      const raw = await fetchJson(`/narrators/${selectedId}/`, {
+      const raw = await fetchJson(`/narrators/${id}/`, {
         method: 'PATCH',
-        body: JSON.stringify({
-          name: profileDraft.name.trim(),
-          arabic_name: profileDraft.arabic_name.trim(),
-          grade: profileDraft.grade.trim(),
-          tabaqah: profileDraft.tabaqah.trim(),
-          tawthiq: profileDraft.tawthiq.trim(),
-          birth_display: profileDraft.birth_display.trim(),
-          birth_place: profileDraft.birth_place.trim(),
-          death_display: profileDraft.death_display.trim(),
-          death_place: profileDraft.death_place.trim(),
-          region: profileDraft.region.trim(),
-          biography: profileDraft.biography.trim(),
-        }),
+        body: JSON.stringify(changedFields),
       })
-      const mapped = mapNarrator(raw)
+      const mapped = mapNarrator({
+        ...raw,
+        teachers: selected.record.teachers,
+        students: selected.record.students,
+      })
+      setNarratorDetails(current => ({ ...current, [id]: mapped }))
       setNarrators((current) => {
-        const remaining = current.filter((item) => item.id !== selectedId)
+        const remaining = current.filter((item) => item.id !== id)
         return [...remaining, mapped]
       })
       setEditingProfile(false)
@@ -763,32 +783,16 @@ function Explorer({ onHome }: { onHome: () => void }) {
     setSelectedId(id)
     setCatalogOpen(false)
     setPanelOpen(true)
-    void (async () => {
-      try {
-        const raw = await fetchJson(`/narrators/${id}/`)
-        const mapped = mapNarrator(raw)
-        setNarrators((current) => {
-          const remaining = current.filter((item) => item.id !== id)
-          return [...remaining, mapped]
-        })
-      } catch {
-        /* keep the mapped list payload if the detail request fails */
-      }
-    })()
   }
 
   const openNarratorPage = (person: Narrator) => {
     setQuery('')
     setSearchHits([])
     setInspectedNarrator(person)
-    void (async () => {
-      try {
-        const raw = await fetchJson(`/narrators/${person.id}/`)
-        setInspectedNarrator(mapNarrator(raw))
-      } catch {
-        /* keep the search-hit payload if the detail request fails */
-      }
-    })()
+  }
+
+  const openRelatedNarrator = (reference: NarratorReference) => {
+    openNarratorPage(mapNarrator(reference))
   }
 
   const edgeByPair = (teacherId: number, studentId: number) =>
@@ -1297,28 +1301,24 @@ function Explorer({ onHome }: { onHome: () => void }) {
             <>
           <div className="profile-intro">
             <span className="profile-avatar">{selected.initials}</span>
-            <p className="profile-arabic" dir="rtl">{selected.arabic}</p>
-            <h2>{selected.name}</h2>
+            {selected.arabic && <p className="profile-arabic" lang="ar" dir="rtl">{selected.arabic}</p>}
+            <h2 dir="auto">{selected.name}</h2>
             <div className="profile-tags"><span>{selected.role}</span><span>{selected.grade}</span></div>
           </div>
 
-          <div className="profile-stats">
-            <div><small>Born</small><strong>{selected.born}</strong></div>
-            <div><small>Died</small><strong>{selected.died}</strong></div>
-            <div><small>Region</small><strong>{selected.location}</strong></div>
-          </div>
-
-          <div className="profile-section">
-            <h3>Biography</h3>
-                <p className="profile-bio" dir="auto">
-                  {selected.description || 'No biographical notes stored for this narrator yet.'}
-                </p>
-                {editor.can_edit_biographies ? (
-                  <button type="button" onClick={startEditingProfile}>
-                    Edit profile <Icon name="arrow" size={15} />
-                  </button>
-                ) : null}
-          </div>
+          <NarratorProfile
+            record={selected.record}
+            status={selectedDetail === 'error' ? 'error' : selectedDetail ? 'loaded' : 'loading'}
+            onOpen={openRelatedNarrator}
+            onRetry={() => retryNarratorDetails(selected.id)}
+          />
+          {editor.can_edit_biographies && selectedDetail && selectedDetail !== 'error' && (
+            <div className="profile-section">
+              <button type="button" onClick={startEditingProfile}>
+                Edit profile <Icon name="arrow" size={15} />
+              </button>
+            </div>
+          )}
             </>
           )}
 
@@ -1360,7 +1360,7 @@ function Explorer({ onHome }: { onHome: () => void }) {
         )}
       </div>
 
-      {inspectedNarrator && (
+      {inspected && (
         <div className="hadith-reader" role="dialog" aria-modal="true" aria-labelledby="narrator-reader-title">
           <button
             type="button"
@@ -1368,34 +1368,29 @@ function Explorer({ onHome }: { onHome: () => void }) {
             aria-label="Close narrator profile"
             onClick={() => setInspectedNarrator(null)}
           />
-          <article className="hadith-reader-page narrator-reader-page">
+          <article className="hadith-reader-page narrator-reader-page" ref={narratorDialog} tabIndex={-1}>
             <header className="hadith-reader-top">
               <div className="narrator-reader-intro">
-                <span className="profile-avatar">{inspectedNarrator.initials}</span>
+                <span className="profile-avatar">{inspected.initials}</span>
                 <p className="eyebrow">Narrator</p>
-                <p className="profile-arabic" dir="rtl">{inspectedNarrator.arabic}</p>
-                <h2 id="narrator-reader-title">{inspectedNarrator.name}</h2>
+                {inspected.arabic && <p className="profile-arabic" lang="ar" dir="rtl">{inspected.arabic}</p>}
+                <h2 id="narrator-reader-title" dir="auto">{inspected.name}</h2>
                 <div className="profile-tags">
-                  <span>{inspectedNarrator.role}</span>
-                  <span>{inspectedNarrator.grade}</span>
+                  <span>{inspected.role}</span>
+                  <span>{inspected.grade}</span>
                 </div>
               </div>
               <button type="button" onClick={() => setInspectedNarrator(null)} aria-label="Close">
                 <Icon name="close" />
               </button>
             </header>
-            <dl className="hadith-reader-meta">
-              <div><dt>Born</dt><dd>{inspectedNarrator.born}</dd></div>
-              <div><dt>Died</dt><dd>{inspectedNarrator.died}</dd></div>
-              <div><dt>Region</dt><dd>{inspectedNarrator.location}</dd></div>
-              <div><dt>Generation</dt><dd>{inspectedNarrator.era}</dd></div>
-            </dl>
-            <div className="hadith-reader-body">
-              <section>
-                <h3>Biography</h3>
-                <p dir="auto">{inspectedNarrator.description || 'No biographical notes stored for this narrator yet.'}</p>
-              </section>
-            </div>
+            <NarratorProfile
+              key={inspected.id}
+              record={inspected.record}
+              status={inspectedDetail === 'error' ? 'error' : inspectedDetail ? 'loaded' : 'loading'}
+              onOpen={openRelatedNarrator}
+              onRetry={() => retryNarratorDetails(inspected.id)}
+            />
           </article>
         </div>
       )}

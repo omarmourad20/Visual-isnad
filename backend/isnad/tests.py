@@ -247,3 +247,47 @@ class CorrectedDatabaseApiTests(APITestCase):
         with self.assertRaisesMessage(CommandError, "isnad tables must be empty"):
             call_command("load_bukhari", stdout=StringIO())
         self.assertEqual((Narrator.objects.count(), Hadith.objects.count(), TransmissionEdge.objects.count()), counts)
+
+
+class NarratorProfileApiTests(APITestCase):
+    @classmethod
+    def setUpTestData(cls):
+        Narrator.objects.bulk_create([
+            Narrator(
+                id=1, name="Narrator one", arabic_name="الراوي الأول",
+                aliases="أبو زيد", biography="هذه ترجمة عربية محفوظة.\nوفيها سطر ثانٍ.",
+                teachers_inds="9, 2, 9, 404, NA, -1, 2147483648",
+                students_inds="2, 9", tags="Recitation/Quran", parents="زيد",
+            ),
+            Narrator(id=2, name="Narrator two", arabic_name="الراوي الثاني", biography="Recitation/Quran"),
+            Narrator(id=9, name="Narrator nine", arabic_name="الراوي التاسع"),
+        ])
+
+    def test_detail_batches_related_names_preserves_order_and_reports_missing_ids(self):
+        with self.assertNumQueries(2):
+            response = self.client.get("/api/v1/narrators/1/")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["teachers_inds"], "9, 2, 9, 404, NA, -1, 2147483648")
+        self.assertEqual(response.data["teachers"], [
+            {"id": 9, "name": "Narrator nine", "arabic_name": "الراوي التاسع"},
+            {"id": 2, "name": "Narrator two", "arabic_name": "الراوي الثاني"},
+            {"id": 404, "name": None, "arabic_name": None},
+        ])
+        self.assertEqual([record["id"] for record in response.data["students"]], [2, 9])
+        self.assertIn("الراوي الأول".encode("utf-8"), response.content)
+        self.assertEqual(response.json()["biography"], "هذه ترجمة عربية محفوظة.\nوفيها سطر ثانٍ.")
+        self.assertEqual(response.data["aliases"], "أبو زيد")
+        self.assertEqual(response.data["parents"], "زيد")
+
+    def test_related_detail_and_compact_search_are_independent(self):
+        with self.assertNumQueries(1):
+            related = self.client.get("/api/v1/narrators/2/")
+        self.assertEqual(related.status_code, 200)
+        self.assertEqual(related.data["biography"], "Recitation/Quran")
+        self.assertEqual(related.data["teachers"], [])
+        self.assertEqual(related.data["students"], [])
+        self.assertEqual(self.client.get("/api/v1/narrators/404/").status_code, 404)
+        search = self.client.get("/api/v1/narrators/", {"search": "الراوي الثاني"})
+        self.assertEqual(search.status_code, 200)
+        self.assertEqual([row["id"] for row in search.data["results"]], [2])
+        self.assertNotIn("teachers", search.data["results"][0])

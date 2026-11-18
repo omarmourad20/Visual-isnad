@@ -162,6 +162,40 @@ class NarratorViewSet(viewsets.ModelViewSet):
             return CompactNarratorSerializer
         return NarratorSerializer
 
+    def retrieve(self, request, *args, **kwargs):
+        narrator = self.get_object()
+        data = self.get_serializer(narrator).data
+
+        def related_ids(field):
+            ids = []
+            for token in field.split(","):
+                token = token.strip()
+                if token.isascii() and token.isdecimal() and len(token) <= 10:
+                    narrator_id = int(token)
+                    if 0 < narrator_id <= 2_147_483_647:
+                        ids.append(narrator_id)
+            return list(dict.fromkeys(ids))
+
+        teachers = related_ids(narrator.teachers_inds)
+        students = related_ids(narrator.students_inds)
+        references = Narrator.objects.only("id", "name", "arabic_name").in_bulk(
+            set(teachers) | set(students)
+        )
+
+        def summarize(ids):
+            return [
+                {
+                    "id": narrator_id,
+                    "name": references[narrator_id].name if narrator_id in references else None,
+                    "arabic_name": references[narrator_id].arabic_name if narrator_id in references else None,
+                }
+                for narrator_id in ids
+            ]
+
+        data["teachers"] = summarize(teachers)
+        data["students"] = summarize(students)
+        return Response(data)
+
     def get_queryset(self):
         queryset = super().get_queryset().order_by("id")
         if self.action == "list":
