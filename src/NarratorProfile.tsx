@@ -1,3 +1,5 @@
+import { parseNarratorTags } from './narratorTags'
+
 export type NarratorReference = {
   id: number
   name: string | null
@@ -105,10 +107,10 @@ export default function NarratorProfile({ record, status, onOpen, onRetry }: {
   ].filter(([, value]) => value)
 
   const biography = recordedText(record.biography)
+  const tags = parseNarratorTags(record.tags)
   const notes = [
     ['Aliases and kunyas', recordedText(record.aliases)],
     ['Parents and lineage', recordedText(record.parents)],
-    ['Tags', recordedText(record.tags)],
   ].filter(([, value]) => value)
 
   return (
@@ -138,6 +140,14 @@ export default function NarratorProfile({ record, status, onOpen, onRetry }: {
               <p className="narrator-source-text" dir="auto">{text}</p>
             </section>
           ))}
+          {tags.length > 0 && (
+            <section>
+              <h3>Tags</h3>
+              <ul className="narrator-tag-list" role="list">
+                {tags.map(tag => <li key={tag} dir="auto">{tag}</li>)}
+              </ul>
+            </section>
+          )}
           <section aria-label="Narrator relationships">
             <NarratorRelationships label="Teachers" entries={relationshipList(record.teachers, record.teachers_inds)} onOpen={onOpen} />
             <NarratorRelationships label="Students" entries={relationshipList(record.students, record.students_inds)} onOpen={onOpen} />
