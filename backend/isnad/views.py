@@ -14,6 +14,8 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
+from rawis_catalog import UNRESOLVED_NARRATOR_ID_START
+
 from .bukhari_books import BUKHARI_BOOKS
 from .editor_auth import issue_editor_token
 from .permissions import StaffWritePermission
@@ -178,8 +180,17 @@ class NarratorViewSet(viewsets.ModelViewSet):
 
         teachers = related_ids(narrator.teachers_inds)
         students = related_ids(narrator.students_inds)
+        # Keep imported graph evidence separate from the catalog's own
+        # student list. Synthetic unresolved IDs are not named students.
+        transmission_students = list(
+            TransmissionEdge.objects.filter(teacher=narrator, student_id__lt=UNRESOLVED_NARRATOR_ID_START)
+            .exclude(student_id=narrator.pk)
+            .order_by("student_id")
+            .values_list("student_id", flat=True)
+            .distinct()
+        )
         references = Narrator.objects.only("id", "name", "arabic_name").in_bulk(
-            set(teachers) | set(students)
+            set(teachers) | set(students) | set(transmission_students)
         )
 
         def summarize(ids):
@@ -194,6 +205,7 @@ class NarratorViewSet(viewsets.ModelViewSet):
 
         data["teachers"] = summarize(teachers)
         data["students"] = summarize(students)
+        data["transmission_students"] = summarize(transmission_students)
         return Response(data)
 
     def get_queryset(self):

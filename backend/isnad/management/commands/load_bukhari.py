@@ -9,7 +9,7 @@ from django.db import transaction
 
 from isnad.models import Hadith, Narrator, TransmissionEdge
 from isnad.scholar_bios import load_cache
-from rawis_catalog import DATA_DIR, read_rawis
+from rawis_catalog import DATA_DIR, UNRESOLVED_NARRATOR_ID_START, read_rawis
 
 INVISIBLE = dict.fromkeys(map(ord, "\u200f\u200e\u200c\u200d\u200b"), None)
 TASHKEEL_RE = re.compile(r"[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06ED]")
@@ -27,14 +27,21 @@ FATHER_KEYS = {"ابو", "ابيه", "ابوه", "ابيها", "اباها"}
 PROPHET_KEYS = {"رسول الله", "النبي", "نبي الله", "رسول الله صلى الله عليه وسلم"}
 BUKHARI_ID = 30001
 PROPHET_ID = 1
-UNMATCHED_ID_START = 800000
+UNMATCHED_ID_START = UNRESOLVED_NARRATOR_ID_START
 
 COMPILER_TERMS = {"حدثنا", "حدثني", "اخبرنا", "اخبرني", "انبانا", "انباني", "سمعت", "سمعنا", "قال لنا", "قال لي"}
 TERMS = COMPILER_TERMS | {"عن", "انه سمع", "انها سمعت", "اخبرتني", "حدثتني"}
 TERM_SPLIT_RE = re.compile(r"\bو?(" + "|".join(sorted(TERMS)) + r")\s+")
 SKIP_NAME_KEYS = {"هرقل", "جبريل", "الملك", "و", "ح"}
 TAHWIL_RE = re.compile(r"(?<!\w)ح[\u064b-\u065f]*(?![\w\u064b-\u065f])")
-PROPHET_REPORT_RE = re.compile(r"^(النبي|رسول الله)(?:$|\s+(?:قال|يقول)\b)")
+PROPHET_TITLE = r"(?:النبي|رسول الله|نبي الله)"
+PROPHET_TITLE_RE = re.compile(rf"^{PROPHET_TITLE}\b")
+PROPHET_REPORT_RE = re.compile(rf"^{PROPHET_TITLE}(?:$|\s+(?:قال|يقول)\b)")
+PROPHET_ATTRIBUTION_RE = re.compile(
+    rf"\s+(?:(?:انه قال|انها قالت|قالت)\s+)(?=(?:قال\s+)?{PROPHET_TITLE}\b)"
+)
+DIRECT_REPORT_TERMS = {"عن", "سمعت", "سمعنا", "انه سمع", "انها سمعت", "حدثني", "حدثنا", "اخبرني", "اخبرنا"}
+
 
 def clean_text(value: str) -> str:
     if not value:
@@ -186,6 +193,12 @@ def _names_from_segment(segment: str, term: str) -> list[tuple[str, str]]:
     if re.match(r"^(في قوله|انها قالت|انه قال)", segment):
         return []
 
+    # An explicit transmission token supplies the relation even when the
+    # title is followed by the opening words of the report.
+    if term in DIRECT_REPORT_TERMS and PROPHET_TITLE_RE.match(segment):
+        return [("رسول الله", term)]
+
+    segment = PROPHET_ATTRIBUTION_RE.sub(" قال ", segment)
     segment = re.split(
         r"\s+(انها قالت|انه قال|في قوله تعالى|في قوله)\b",
         segment,
@@ -258,6 +271,12 @@ def extract_chains(isnad: str) -> list[list[tuple[str, str]]]:
             if piece in TERMS:
                 pending_term = piece
                 continue
+            # A question such as "did you hear..." and a narrative dispute
+            # introduce embedded dialogue, outside this explicit route.
+            boundary = re.search(r"\bانه تماري\b|\bهل\s*$", piece)
+            if boundary:
+                current.extend(_names_from_segment(piece[:boundary.start()], pending_term))
+                break
             extracted = _names_from_segment(piece, pending_term)
             if not extracted:
                 if re.search(r"في قوله|انها قالت|انه قال", piece):

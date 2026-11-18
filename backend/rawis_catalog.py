@@ -4,6 +4,7 @@ import csv
 from pathlib import Path
 
 
+UNRESOLVED_NARRATOR_ID_START = 800000
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 
 
