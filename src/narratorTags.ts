@@ -46,6 +46,8 @@ export function parseNarratorTags(value?: string | null): string[] {
       if (comparisonKey(name) === comparisonKey(identifier)) label = name
     }
 
+    if (comparisonKey(label) === 'client') label = 'Mawla (مولى)'
+
     const key = comparisonKey(label)
     if (key && !/^(?:n\/?a|\[\]|[–—-])$/.test(key) && !tags.has(key)) tags.set(key, label)
   }
