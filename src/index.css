@@ -1551,6 +1551,26 @@
 .narrator-facts dt { color: #526861; font-size: 11px; }
 .narrator-facts dd { margin: 2px 0 0; font-size: 13px; }
 .narrator-source-text { text-align: start; white-space: pre-wrap; unicode-bidi: plaintext; }
+.narrator-tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.narrator-tag-list li {
+  max-width: 100%;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: #eff3f1;
+  color: #4d6963;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.4;
+  text-align: start;
+  overflow-wrap: anywhere;
+}
 .narrator-relationships + .narrator-relationships { margin-top: 8px; }
 .narrator-relationships summary { cursor: pointer; font-size: 13px; font-weight: 600; padding: 5px 0; }
 .narrator-relations { list-style: none; padding: 0; margin: 5px 0 0; max-height: 18rem; overflow: auto; }
