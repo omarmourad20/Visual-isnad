@@ -206,6 +206,17 @@ class CorrectedDatabaseApiTests(APITestCase):
                     writer.writerows(row for row in reader if row["Reference"].rsplit(":", 1)[-1] in selected)
             call_command("load_bukhari", bukhari=str(subset), stdout=StringIO())
 
+    def test_hadith_search_prioritizes_exact_number_and_searches_both_languages(self):
+        response = self.client.get("/api/v1/hadiths/", {"search": "5", "compact": 1})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["results"][0]["hadith_number"], "5")
+        self.assertNotIn("arabic_matn", response.data["results"][0])
+
+        for term in ("رَسُولُ اللَّهِ", "revelation"):
+            with self.subTest(term=term):
+                response = self.client.get("/api/v1/hadiths/", {"search": term, "compact": 1})
+                self.assertIn("5", {row["hadith_number"] for row in response.data["results"]})
+
     def test_hadith_5_ends_with_ibn_abbas(self):
         result = self.client.get("/api/v1/hadiths/5/?chain=1")
         self.assertEqual(result.status_code, 200)

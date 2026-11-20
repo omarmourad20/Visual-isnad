@@ -2,7 +2,7 @@ import re
 from collections import defaultdict
 
 from django.core.cache import cache
-from django.db.models import Count, Q
+from django.db.models import Case, Count, Q, Value, When
 from django.db.models.functions import Left
 from django.contrib.auth import authenticate, login, logout
 from django.middleware.csrf import get_token
@@ -277,6 +277,12 @@ class HadithViewSet(viewsets.ModelViewSet):
                 Q(hadith_number__icontains=search)
                 | Q(topic__icontains=search)
                 | Q(chapter_title__icontains=search)
+                | Q(chapter_title_arabic__icontains=search)
+                | Q(arabic_matn__icontains=search)
+                | Q(english_matn__icontains=search)
+            ).order_by(
+                Case(When(hadith_number__iexact=search, then=Value(0)), default=Value(1)),
+                "id",
             )
         if self.action == "list" and compact:
             queryset = queryset.defer(

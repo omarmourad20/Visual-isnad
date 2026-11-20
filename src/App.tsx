@@ -423,6 +423,8 @@ function Explorer({ onHome }: { onHome: () => void }) {
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [query, setQuery] = useState('')
   const [searchHits, setSearchHits] = useState<Narrator[]>([])
+  const [hadithHits, setHadithHits] = useState<HadithRecord[]>([])
+  const [searchStatus, setSearchStatus] = useState<'loading' | 'done' | 'error'>('loading')
   const [zoom, setZoom] = useState(100)
   const graphCanvasRef = useRef<HTMLDivElement>(null)
   const zoomRef = useRef(100)
@@ -611,23 +613,35 @@ function Explorer({ onHome }: { onHome: () => void }) {
   }, [])
 
   useEffect(() => {
-    if (!query.trim()) {
-      setSearchHits([])
-      return
-    }
+    const term = query.trim()
+    setSearchHits([])
+    setHadithHits([])
+    if (!term) return
+    setSearchStatus('loading')
+
+    const controller = new AbortController()
     const handle = window.setTimeout(async () => {
-      try {
-        const payload = await fetchJson(`/narrators/?search=${encodeURIComponent(query.trim())}&page_size=12`)
-        setSearchHits(unwrapList<NarratorRecord>(payload).map(mapNarrator))
-      } catch {
-        setSearchHits(
-          narrators.filter((item) =>
-            `${item.name} ${item.arabic} ${item.location}`.toLowerCase().includes(query.toLowerCase()),
-          ),
-        )
+      const search = encodeURIComponent(term)
+      const options = { signal: controller.signal }
+      const [narratorResult, hadithResult] = await Promise.allSettled([
+        fetchJson(`/narrators/?search=${search}&page_size=12`, options),
+        fetchJson(`/hadiths/?search=${search}&compact=1&page_size=12`, options),
+      ])
+      if (controller.signal.aborted) return
+      setSearchHits(narratorResult.status === 'fulfilled'
+        ? unwrapList<NarratorRecord>(narratorResult.value).map(mapNarrator)
+        : narrators.filter((item) =>
+            `${item.name} ${item.arabic} ${item.location}`.toLowerCase().includes(term.toLowerCase()),
+          ))
+      if (hadithResult.status === 'fulfilled') {
+        setHadithHits(unwrapList<HadithRecord>(hadithResult.value))
       }
+      setSearchStatus(hadithResult.status === 'rejected' || narratorResult.status === 'rejected' ? 'error' : 'done')
     }, 250)
-    return () => window.clearTimeout(handle)
+    return () => {
+      window.clearTimeout(handle)
+      controller.abort()
+    }
   }, [query, narrators])
 
   useEffect(() => {
@@ -917,19 +931,35 @@ function Explorer({ onHome }: { onHome: () => void }) {
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search narrators…"
-            aria-label="Search narrators"
+            placeholder="Search hadiths and narrators…"
+            aria-label="Search hadiths and narrators"
           />
           <Icon name="search" size={18} />
-          {query && (
+          {query.trim() && (
             <div className="search-results">
-              {searchHits.length ? searchHits.map((item) => (
-                <button key={item.id} onClick={() => openNarratorPage(item)}>
+              {hadithHits.map((hadith) => (
+                <button key={hadith.id} onClick={() => {
+                  setQuery('')
+                  void selectHadith(hadith)
+                }}>
+                  <span className="result-avatar" aria-hidden="true">#</span>
+                  <span><strong>Hadith {hadith.hadith_number}</strong><small>{hadith.chapter_title || listPreview(hadith)}</small></span>
+                  <Icon name="arrow" size={15} />
+                </button>
+              ))}
+              {searchHits.map((item) => (
+                <button key={item.id} onClick={() => {
+                  setQuery('')
+                  openNarratorPage(item)
+                }}>
                   <span className="result-avatar">{item.initials}</span>
                   <span><strong>{item.name}</strong><small>{item.location} · {item.era}</small></span>
                   <Icon name="arrow" size={15} />
                 </button>
-              )) : <p>No narrators found</p>}
+              ))}
+              {searchStatus === 'loading' && <p role="status">Searching…</p>}
+              {searchStatus === 'error' && <p role="status">Some search results are unavailable.</p>}
+              {searchStatus === 'done' && !hadithHits.length && !searchHits.length && <p role="status">No hadiths or narrators found</p>}
             </div>
           )}
         </div>
