@@ -21,6 +21,9 @@ from .editor_auth import issue_editor_token
 from .permissions import StaffWritePermission
 from .throttles import LoginRateThrottle
 from .models import Hadith, Narrator, TransmissionEdge
+from .knowledge_graph import UPSTREAM_ERRORS, fetch_record, unavailable
+from .source_api import local_record, source_candidates
+from .source_matching import HadithRecord, propose_match
 from .serializers import (
     COMPACT_NARRATOR_FIELDS,
     CompactNarratorSerializer,
@@ -293,6 +296,33 @@ class HadithViewSet(viewsets.ModelViewSet):
         if request.query_params.get("chain") in COMPACT_TRUE:
             data.update(chain_payload(instance))
         return Response(data)
+
+    @action(detail=True, methods=["get"], url_path="sources")
+    def sources(self, request, *args, **kwargs):
+        state, candidates = source_candidates(self.get_object())
+        return self.get_paginated_response(self.paginate_queryset(candidates)) if state == "available" else Response({
+            "count": 0, "next": None, "previous": None, "results": [], "status": state,
+        })
+
+    @action(detail=True, methods=["get"], url_path="source-routes")
+    def source_routes(self, request, *args, **kwargs):
+        instance = self.get_object()
+        state, candidates = source_candidates(instance)
+        candidate = next((row for row in candidates if row["can_preview_routes"]
+                          and row["right_key"] == request.query_params.get("source_key")), None)
+        if candidate is None:
+            return Response({"error": "Source proposal unavailable", "status": state}, status=404)
+        try:
+            data = fetch_record("hadith", int(candidate["right_id"]))
+            live_record = HadithRecord(
+                candidate["provider"], candidate["edition"], candidate["right_id"], "صحيح البخاري",
+                data.get("matnClean") or "", str(data.get("noInBook") or ""), data.get("nass") or "",
+            )
+            if str(data.get("bookId")) != "1" or propose_match(local_record(instance), live_record).status != "review_required":
+                return Response({"error": "Live Knowledge Graph text or collection does not corroborate this proposal"}, status=409)
+            return Response({"proposal": candidate, "routes": data["visual_isnad_chains"]})
+        except UPSTREAM_ERRORS as error:
+            return unavailable(error, "Hadith")
 
     @action(detail=False, methods=["get"], url_path="books")
     def books(self, request):

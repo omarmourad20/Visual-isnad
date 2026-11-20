@@ -1,8 +1,9 @@
-﻿"""Convert Hadith Knowledge Graph chains into Visual Isnad graph data."""
+"""Convert Hadith Knowledge Graph chains into Visual Isnad graph data."""
 
 def convert_kg_chain(sanad):
     """Convert one sanad without mixing it with other chains."""
 
+    sanad_id = int(sanad["sanadId"])
     original_chain = sanad.get("chain", [])
     narrators = []
     edges = []
@@ -10,8 +11,13 @@ def convert_kg_chain(sanad):
     # Reserve a separate numeric ID range for Knowledge Graph narrators.
     id_offset = 1000000
 
+    if not isinstance(original_chain, list):
+        raise ValueError("A sanad chain must be an ordered list")
+
     for node in original_chain:
         rawi_id = int(node["rawiId"])
+        if not 0 < rawi_id < id_offset:
+            raise ValueError("KG narrator ID is outside the supported namespace")
         internal_id = rawi_id + id_offset
         name = node.get("name") or "راوٍ غير معروف"
         rank = node.get("rank") or ""
@@ -38,15 +44,16 @@ def convert_kg_chain(sanad):
         teacher = original_chain[index + 1]
 
         edges.append({
-            "id": int(sanad["sanadId"]) * 100 + index,
+            "id": sanad_id * 100 + index,
             "teacher": int(teacher["rawiId"]) + id_offset,
             "student": int(student["rawiId"]) + id_offset,
-            "terminology": "عن",
+            "terminology": student.get("terminology") or "",
             "sequence": index + 1,
         })
 
     return {
-        "sanad_id": sanad.get("sanadId"),
+        "sanad_id": sanad_id,
+        "source": {"provider": "hadith_kg", "status": "external_unreviewed", "native_sanad_id": sanad_id},
         "grade": sanad.get("grade"),
         "grade_reason": sanad.get("gradeReason"),
         "narrators": narrators,

@@ -30,6 +30,18 @@ type KnowledgeGraphChain = {
   edges: EdgeRecord[]
 }
 
+type SourceCandidate = {
+  right_key: string
+  right_id: string
+  provider: string
+  edition: string
+  reference: string
+  confidence: string
+  isnad_agreement: string
+  reason: string
+  can_preview_routes: boolean
+}
+
 type KnowledgeGraphNarrator = {
   name: string
   nickname?: string
@@ -41,6 +53,7 @@ type KnowledgeGraphNarrator = {
   deathYear?: number
   deathPlace?: string
   aqwal?: NarratorRecord['aqwal']
+  biography?: string
   teachers?: { id: number; name: string }[]
   students?: { id: number; name: string }[]
 }
@@ -63,6 +76,7 @@ function mapKnowledgeGraphNarrator(id: number, raw: KnowledgeGraphNarrator) {
     death_year: raw.deathYear,
     death_place: raw.deathPlace,
     aqwal: raw.aqwal,
+    biography: raw.biography,
     teachers: raw.teachers?.map(reference),
     students: raw.students?.map(reference),
   })
@@ -420,6 +434,12 @@ function Explorer({ onHome }: { onHome: () => void }) {
   const [kgChains, setKgChains] = useState<KnowledgeGraphChain[]>([])
   const [selectedKgSanadId, setSelectedKgSanadId] = useState<number | null>(null)
   const [kgHadithId, setKgHadithId] = useState<number | null>(null)
+  const [sourceCandidates, setSourceCandidates] = useState<SourceCandidate[]>([])
+  const [sourcePage, setSourcePage] = useState(1)
+  const [hasMoreSources, setHasMoreSources] = useState(false)
+  const [sourceError, setSourceError] = useState('')
+  const [previewingSource, setPreviewingSource] = useState<SourceCandidate | null>(null)
+  const sourceHadithNumber = kgHadithId === null ? currentHadith?.hadith_number : undefined
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [query, setQuery] = useState('')
   const [searchHits, setSearchHits] = useState<Narrator[]>([])
@@ -470,6 +490,7 @@ function Explorer({ onHome }: { onHome: () => void }) {
   }, [])
 
   const hadithRequest = useRef(0)
+  const localChain = useRef<{ narrators?: unknown; edges?: unknown }>({})
 
   const applyChain = (payload: { narrators?: unknown; edges?: unknown }) => {
     const mapped = unwrapList<NarratorRecord>(payload?.narrators).map(mapNarrator)
@@ -481,6 +502,48 @@ function Explorer({ onHome }: { onHome: () => void }) {
     const ordered = orderChain(grouped[0] ?? [])
     setSelectedId(ordered[Math.floor(ordered.length / 2)] ?? mapped[0]?.id ?? null)
     setSelectedEdge(null)
+  }
+
+  useEffect(() => {
+    setSourceCandidates([])
+    setHasMoreSources(false)
+    if (!sourceHadithNumber) return
+    const controller = new AbortController()
+    void fetchJson(`/hadiths/${encodeURIComponent(sourceHadithNumber)}/sources/?page=${sourcePage}&page_size=10`, {
+      signal: controller.signal,
+    }).then(data => {
+      if (controller.signal.aborted) return
+      setSourceCandidates(unwrapList<SourceCandidate>(data))
+      setHasMoreSources(Boolean(data.next))
+      if (data.status === 'unavailable') setSourceError('External source proposals are temporarily unavailable.')
+    }).catch(() => {
+      if (!controller.signal.aborted) setSourceError('Could not load external source proposals.')
+    })
+    return () => controller.abort()
+  }, [sourceHadithNumber, sourcePage])
+
+  const previewSource = async (candidate: SourceCandidate) => {
+    const request = ++hadithRequest.current
+    setSourceError('')
+    try {
+      const data = await fetchJson(
+        `/hadiths/${encodeURIComponent(sourceHadithNumber ?? '')}/source-routes/?source_key=${encodeURIComponent(candidate.right_key)}`,
+      )
+      if (request !== hadithRequest.current) return
+      const routes: KnowledgeGraphChain[] = data.routes ?? []
+      if (!routes.length) {
+        setSourceError('This external source has no stored routes.')
+        return
+      }
+      setPreviewingSource(candidate)
+      setKgChains(routes)
+      setSelectedKgSanadId(routes[0].sanad_id)
+      applyChain(routes[0])
+    } catch {
+      if (request === hadithRequest.current) {
+        setSourceError('External chain unavailable or its text does not corroborate this proposal.')
+      }
+    }
   }
 
   const loadKnowledgeGraphHadith = async (hadithId: number) => {
@@ -496,6 +559,7 @@ function Explorer({ onHome }: { onHome: () => void }) {
         return
       }
 
+      setPreviewingSource(null)
       setKgChains(paths)
       setSelectedKgSanadId(firstChain.sanad_id)
       setKgHadithId(hadithId)
@@ -534,6 +598,11 @@ function Explorer({ onHome }: { onHome: () => void }) {
     setHadithReaderOpen(false)
     setCatalogOpen(false)
     setKgHadithId(null)
+    setPreviewingSource(null)
+    setSourcePage(1)
+    setSourceError('')
+    setSourceCandidates([])
+    setHasMoreSources(false)
     setKgChains([])
     setSelectedKgSanadId(null)
     setSelectedHadithId(hadith.id)
@@ -545,6 +614,7 @@ function Explorer({ onHome }: { onHome: () => void }) {
       const detail = await fetchJson(`/hadiths/${encodeURIComponent(hadith.hadith_number)}/?chain=1`)
       if (request !== hadithRequest.current) return
       setCurrentHadith(detail)
+      localChain.current = detail
       applyChain(detail)
       setLoadError('')
     } catch (error) {
@@ -581,10 +651,11 @@ function Explorer({ onHome }: { onHome: () => void }) {
           setCurrentHadith(boot.hadith)
           setSelectedHadithId(boot.hadith.id)
           setSelectedHadithNumber(boot.hadith.hadith_number)
-          applyChain({
+          localChain.current = {
             narrators: boot.narrators || boot.hadith.narrators,
             edges: boot.edges || boot.hadith.edges,
-          })
+          }
+          applyChain(localChain.current)
           setLoadError('')
         }
         setIsLoading(false)
@@ -719,9 +790,9 @@ function Explorer({ onHome }: { onHome: () => void }) {
 
   const edges = chains[chainIndex] ?? []
   const chainIds = useMemo(() => {
-    if (kgHadithId !== null && !edges.length) return narrators.map(person => person.id)
+    if ((kgHadithId !== null || previewingSource) && !edges.length) return narrators.map(person => person.id)
     return orderChain(edges)
-  }, [edges, kgHadithId, narrators])
+  }, [edges, kgHadithId, narrators, previewingSource])
   const totalHadiths = books.reduce((sum, book) => sum + book.count, 0)
   const selectedBookNumber = Number(currentHadith?.in_book_reference?.match(/Book\s+(\d+)/i)?.[1] || expandedBook || 1)
   const activeBook = books.find((book) => book.number === selectedBookNumber)
@@ -1152,7 +1223,9 @@ function Explorer({ onHome }: { onHome: () => void }) {
           <section className="visualizer">
             <div className="visualizer-toolbar">
               <div>
-                <p className="eyebrow">TRANSMISSION PATH</p>
+                <p className="eyebrow">{kgHadithId !== null || previewingSource
+                  ? 'EXTERNAL · KNOWLEDGE GRAPH · UNREVIEWED'
+                  : 'VISUAL ISNAD TRANSMISSION PATH'}</p>
                 <h2>Chain of narration <span>{chainNarrators.length} nodes · {edges.length} transmissions</span></h2>
                 {chains.length > 1 && (
                   <label>
@@ -1174,7 +1247,7 @@ function Explorer({ onHome }: { onHome: () => void }) {
               >
                 Load Knowledge Graph Hadith 17154
               </button>
-              {kgHadithId !== null && (
+              {(kgHadithId !== null || previewingSource) && (
                 <label>
                   Knowledge Graph isnād{' '}
                   <select value={selectedKgSanadId ?? ''} onChange={(event) => {
@@ -1192,6 +1265,45 @@ function Explorer({ onHome }: { onHome: () => void }) {
                 </label>
               )}
             </div>
+
+            {sourceError && <p role="status">{sourceError}</p>}
+            {previewingSource && currentHadith && (
+              <button className="knowledge-graph-load" type="button" onClick={() => {
+                hadithRequest.current += 1
+                setPreviewingSource(null)
+                setKgChains([])
+                setSelectedKgSanadId(null)
+                setSourceError('')
+                applyChain(localChain.current)
+              }}>
+                Restore Visual Isnad chains
+              </button>
+            )}
+            {(sourceCandidates.length > 0 || sourcePage > 1) && (
+              <details className="source-proposals">
+                <summary>External source proposals</summary>
+                <p>These proposals are unreviewed. Text agreement cannot establish an equivalent transmission chain.</p>
+                <ul>
+                  {sourceCandidates.map(candidate => (
+                    <li key={candidate.right_key}>
+                      <strong>{candidate.provider === 'hadith_kg' ? 'Knowledge Graph' : candidate.provider}</strong>
+                      {' · '}{candidate.edition} · {candidate.reference || candidate.right_id}
+                      {' · '}{candidate.confidence.replace(/_/g, ' ')}
+                      <p>{candidate.reason}
+                        {candidate.isnad_agreement === 'text_differs' && ' The recorded isnad text differs.'}
+                      </p>
+                      {candidate.can_preview_routes && (
+                        <button className="knowledge-graph-load" type="button" onClick={() => void previewSource(candidate)}>
+                          Preview external chains
+                        </button>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+                {sourcePage > 1 && <button type="button" onClick={() => setSourcePage(page => page - 1)}>Previous</button>}
+                {hasMoreSources && <button type="button" onClick={() => setSourcePage(page => page + 1)}>Next</button>}
+              </details>
+            )}
 
             <div className="graph-legend-row">
               <div className="graph-legend">

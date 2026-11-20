@@ -1675,3 +1675,20 @@
 .narrator-relations bdi + bdi { display: block; font-family: 'Noto Naskh Arabic', serif; }
 .narrator-reader-page .narrator-profile-details section,
 .narrator-reader-page .narrator-facts { padding-inline: 0; }
+
+.source-proposals {
+  margin: 0 1rem 0.75rem;
+  padding: 0.75rem;
+  border: 1px solid #dce5e0;
+  border-radius: 0.6rem;
+  overflow-wrap: anywhere;
+}
+
+.source-proposals summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.source-proposals li {
+  margin-block: 0.5rem;
+}
