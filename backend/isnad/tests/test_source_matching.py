@@ -1,17 +1,10 @@
-"""Run: python -m unittest discover -s backend/isnad/tests -p 'test_source_matching.py'"""
-import importlib.util
-from pathlib import Path
-import sys
+"""Conservative source matching tests."""
 import unittest
 
-path = Path(__file__).resolve().parents[1] / "source_matching.py"
-spec = importlib.util.spec_from_file_location("source_matching", path)
-module = importlib.util.module_from_spec(spec)
-sys.modules[spec.name] = module
-spec.loader.exec_module(module)
+from isnad import source_matching as module
 
-def rec(provider, native_id, text, reference="1", collection="صحيح البخاري"):
-    return module.HadithRecord(provider, "edition-a", native_id, collection, text, reference)
+def rec(provider, native_id, text, ref="1", collection="صحيح البخاري"):
+    return module.HadithRecord(provider, "v1", native_id, collection, text, ref)
 
 class MatchingTests(unittest.TestCase):
     def test_normalization(self):
@@ -26,6 +19,14 @@ class MatchingTests(unittest.TestCase):
         self.assertEqual(module.propose_match(rec("django","1","نص"),rec("kg","1","نص",collection="سنن أبي داود")).status,"not_matched")
     def test_missing_text(self):
         self.assertEqual(module.propose_match(rec("django","1",""),rec("kg","1","نص")).status,"insufficient_evidence")
+    def test_matn_agreement_does_not_hide_different_isnad_text(self):
+        left = module.HadithRecord("visual", "v1", "1", "Bukhari", "نص", arabic_isnad="حدثنا زيد")
+        right = module.HadithRecord("kg", "v2", "9", "Bukhari", "نص", arabic_isnad="حدثنا عمرو")
+        proposal = module.propose_match(left, right)
+        self.assertEqual(proposal.evidence, "matn")
+        self.assertEqual(proposal.isnad_agreement, "text_differs")
+        self.assertEqual(proposal.status, "review_required")
+
     def test_provider_scoped_ids(self):
         p=module.propose_match(rec("django","1","نص"),rec("kg","1","نص"))
         self.assertNotEqual(p.left_key,p.right_key)

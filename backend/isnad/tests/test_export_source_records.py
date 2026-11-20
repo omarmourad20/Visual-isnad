@@ -1,17 +1,11 @@
 """Read-only SQLite export tests, using temporary synthetic databases."""
-import importlib.util
 import sqlite3
 from contextlib import closing
-import sys
 import tempfile
 from pathlib import Path
 import unittest
 
-ROOT = Path(__file__).resolve().parents[1]
-spec = importlib.util.spec_from_file_location("export_source_records", ROOT / "export_source_records.py")
-module = importlib.util.module_from_spec(spec)
-sys.modules[spec.name] = module
-spec.loader.exec_module(module)
+from isnad import export_source_records as module
 
 class ExportTests(unittest.TestCase):
     def setUp(self):
@@ -31,7 +25,8 @@ class ExportTests(unittest.TestCase):
                 db.execute("INSERT INTO isnad_hadith VALUES (3,'','','','','')")
         self.assertEqual(len(rows),1)
         self.assertEqual(rows[0]["native_id"],"1")
-        self.assertEqual(rows[0]["arabic_matn"],"النص الكامل")
+        self.assertEqual(rows[0]["arabic_full"],"النص الكامل")
+        self.assertEqual(rows[0]["arabic_matn"], "النص")
     def test_kg_export(self):
         with closing(sqlite3.connect(self.path)) as db:
             db.execute("CREATE TABLE books (id INTEGER, name TEXT)")

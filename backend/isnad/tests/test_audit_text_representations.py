@@ -1,19 +1,6 @@
 """Django-independent representation diagnostic unit tests."""
-import importlib.util
-from pathlib import Path
-import sys
-import types
 import unittest
 
-ROOT = Path(__file__).resolve().parents[1]
-pkg = types.ModuleType("isnad")
-pkg.__path__ = [str(ROOT)]
-sys.modules.setdefault("isnad", pkg)
-for name in ("source_matching", "export_source_records", "audit_text_representations"):
-    spec = importlib.util.spec_from_file_location("isnad." + name, ROOT / (name + ".py"))
-    mod = importlib.util.module_from_spec(spec)
-    sys.modules[spec.name] = mod
-    spec.loader.exec_module(mod)
 from isnad.audit_text_representations import classify, audit
 
 class TextRepresentationTests(unittest.TestCase):

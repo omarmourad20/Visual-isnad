@@ -1,16 +1,7 @@
-"""Run from backend/isnad: python -m unittest discover -s tests -p 'test_source_crosswalk.py'"""
-import importlib.util
-from pathlib import Path
-import sys
+"""Crosswalk proposal tests."""
 import unittest
-ROOT = Path(__file__).resolve().parents[1]
-for name in ('source_matching', 'source_crosswalk'):
-    spec = importlib.util.spec_from_file_location(name, ROOT / (name + '.py'))
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[name] = module
-    spec.loader.exec_module(module)
-from source_matching import HadithRecord
-from source_crosswalk import build_crosswalk, parse_record
+from isnad.source_matching import HadithRecord
+from isnad.source_crosswalk import build_crosswalk, parse_record
 def rec(provider, id, text, ref='1', book='صحيح البخاري'):
     return HadithRecord(provider, 'v1', id, book, text, ref)
 class CrosswalkTests(unittest.TestCase):

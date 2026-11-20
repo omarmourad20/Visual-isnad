@@ -5,6 +5,7 @@ Run from backend: python -m isnad.audit_text_representations --visual-db db.sqli
 """
 import argparse
 from collections import Counter
+from contextlib import closing
 import json
 from pathlib import Path
 from .export_source_records import readonly_connection
@@ -53,12 +54,12 @@ def audit(visual_rows, kg_rows, max_examples=10):
             "counts": dict(sorted(counts.items())), "examples": examples}
 
 def run(visual_path, kg_path, book_id=1, max_examples=10):
-    with readonly_connection(visual_path) as visual:
+    with closing(readonly_connection(visual_path)) as visual:
         visual_rows = list(visual.execute(
             "SELECT id,hadith_number,arabic_full,arabic_matn FROM isnad_hadith ORDER BY id"))
-    with readonly_connection(kg_path) as kg:
+    with closing(readonly_connection(kg_path)) as kg:
         book = kg.execute("SELECT name FROM books WHERE id=?", (book_id,)).fetchone()
-        if not book or "البخاري" not in book[0]:
+        if not book or book[0].strip() != "صحيح البخاري":
             raise ValueError("Selected KG book must be Sahih al-Bukhari")
         kg_rows = list(kg.execute(
             "SELECT id,no_inbook,nass FROM hadiths WHERE book_id=? ORDER BY id", (book_id,)))
