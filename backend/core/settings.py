@@ -101,7 +101,10 @@ WSGI_APPLICATION = "core.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases
 
-_db = dj_database_url.config(default="sqlite:///db.sqlite3", conn_max_age=0)
+_db = dj_database_url.config(
+    default=f"sqlite:///{(BASE_DIR / 'db.sqlite3').as_posix()}",
+    conn_max_age=0,
+)
 if "postgresql" in _db.get("ENGINE", "") or "postgres" in _db.get("ENGINE", ""):
     _db["CONN_MAX_AGE"] = 600
     _db["CONN_HEALTH_CHECKS"] = True

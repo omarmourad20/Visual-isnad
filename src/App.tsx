@@ -21,6 +21,53 @@ type Narrator = {
   record: NarratorRecord
 }
 
+const KG_NARRATOR_OFFSET = 1_000_000
+
+type KnowledgeGraphChain = {
+  sanad_id: number
+  grade: string | null
+  narrators: NarratorRecord[]
+  edges: EdgeRecord[]
+}
+
+type KnowledgeGraphNarrator = {
+  name: string
+  nickname?: string
+  nasab?: string
+  rank?: string
+  tabaka?: number
+  iqama?: string
+  birthYear?: number
+  deathYear?: number
+  deathPlace?: string
+  aqwal?: NarratorRecord['aqwal']
+  teachers?: { id: number; name: string }[]
+  students?: { id: number; name: string }[]
+}
+
+function mapKnowledgeGraphNarrator(id: number, raw: KnowledgeGraphNarrator) {
+  const reference = (person: { id: number; name: string }): NarratorReference => ({
+    id: KG_NARRATOR_OFFSET + person.id,
+    name: person.name,
+    arabic_name: null,
+  })
+  return mapNarrator({
+    id,
+    name: raw.nickname || raw.name,
+    arabic_name: raw.name,
+    aliases: [raw.nickname, raw.nasab].filter(Boolean).join(' · '),
+    grade: raw.rank,
+    tabaqah: raw.tabaka == null ? '' : String(raw.tabaka),
+    region: raw.iqama,
+    birth_year: raw.birthYear,
+    death_year: raw.deathYear,
+    death_place: raw.deathPlace,
+    aqwal: raw.aqwal,
+    teachers: raw.teachers?.map(reference),
+    students: raw.students?.map(reference),
+  })
+}
+
 type ProfileDraft = {
   name: string
   arabic_name: string
@@ -370,6 +417,9 @@ function Explorer({ onHome }: { onHome: () => void }) {
   const [loadError, setLoadError] = useState('')
   const [selectedHadithId, setSelectedHadithId] = useState<number | null>(null)
   const [selectedHadithNumber, setSelectedHadithNumber] = useState<string | null>(null)
+  const [kgChains, setKgChains] = useState<KnowledgeGraphChain[]>([])
+  const [selectedKgSanadId, setSelectedKgSanadId] = useState<number | null>(null)
+  const [kgHadithId, setKgHadithId] = useState<number | null>(null)
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [query, setQuery] = useState('')
   const [searchHits, setSearchHits] = useState<Narrator[]>([])
@@ -404,9 +454,14 @@ function Explorer({ onHome }: { onHome: () => void }) {
   const fetchNarratorDetails = useCallback((id: number) => {
     if (requestedDetails.current.has(id)) return
     requestedDetails.current.add(id)
-    void fetchJson(`/narrators/${id}/`)
+    const fromKnowledgeGraph = id >= KG_NARRATOR_OFFSET
+    const path = fromKnowledgeGraph
+      ? `/knowledge-graph/rawis/${id - KG_NARRATOR_OFFSET}/`
+      : `/narrators/${id}/`
+    void fetchJson(path)
       .then(raw => {
-        setNarratorDetails(current => ({ ...current, [id]: mapNarrator(raw) }))
+        const detail = fromKnowledgeGraph ? mapKnowledgeGraphNarrator(id, raw) : mapNarrator(raw)
+        setNarratorDetails(current => ({ ...current, [id]: detail }))
       })
       .catch(() => {
         requestedDetails.current.delete(id)
@@ -424,8 +479,41 @@ function Explorer({ onHome }: { onHome: () => void }) {
     setChains(grouped)
     setChainIndex(0)
     const ordered = orderChain(grouped[0] ?? [])
-    setSelectedId(ordered[Math.floor(ordered.length / 2)] ?? null)
+    setSelectedId(ordered[Math.floor(ordered.length / 2)] ?? mapped[0]?.id ?? null)
     setSelectedEdge(null)
+  }
+
+  const loadKnowledgeGraphHadith = async (hadithId: number) => {
+    const request = ++hadithRequest.current
+    setLoadError('')
+    try {
+      const data = await fetchJson(`/knowledge-graph/hadiths/${hadithId}/`)
+      if (request !== hadithRequest.current) return
+      const paths: KnowledgeGraphChain[] = data.visual_isnad_chains ?? []
+      const firstChain = paths.find(chain => chain.grade === 'صحيح') ?? paths[0]
+      if (!firstChain) {
+        setLoadError('No Isnad chains found for this Hadith.')
+        return
+      }
+
+      setKgChains(paths)
+      setSelectedKgSanadId(firstChain.sanad_id)
+      setKgHadithId(hadithId)
+      setHadithReaderOpen(false)
+      applyChain(firstChain)
+      setSelectedHadithId(null)
+      setSelectedHadithNumber(String(data.noInBook ?? hadithId))
+      setCurrentHadith({
+        id: hadithId,
+        hadith_number: String(data.noInBook ?? hadithId),
+        book_title: `Knowledge Graph Collection ${data.bookId}`,
+        arabic_matn: data.matnClean || data.nass || '',
+        arabic_full: data.nass || '',
+        grade: data.hukm || firstChain.grade || '',
+      })
+    } catch {
+      if (request === hadithRequest.current) setLoadError('Could not load Knowledge Graph Hadith.')
+    }
   }
 
   const loadBookHadiths = async (bookNumber: number) => {
@@ -445,6 +533,9 @@ function Explorer({ onHome }: { onHome: () => void }) {
     const request = ++hadithRequest.current
     setHadithReaderOpen(false)
     setCatalogOpen(false)
+    setKgHadithId(null)
+    setKgChains([])
+    setSelectedKgSanadId(null)
     setSelectedHadithId(hadith.id)
     setSelectedHadithNumber(hadith.hadith_number)
     setCurrentHadith(null)
@@ -627,7 +718,10 @@ function Explorer({ onHome }: { onHome: () => void }) {
   }, [])
 
   const edges = chains[chainIndex] ?? []
-  const chainIds = useMemo(() => orderChain(edges), [edges])
+  const chainIds = useMemo(() => {
+    if (kgHadithId !== null && !edges.length) return narrators.map(person => person.id)
+    return orderChain(edges)
+  }, [edges, kgHadithId, narrators])
   const totalHadiths = books.reduce((sum, book) => sum + book.count, 0)
   const selectedBookNumber = Number(currentHadith?.in_book_reference?.match(/Book\s+(\d+)/i)?.[1] || expandedBook || 1)
   const activeBook = books.find((book) => book.number === selectedBookNumber)
@@ -704,7 +798,7 @@ function Explorer({ onHome }: { onHome: () => void }) {
   const madarId = chainNarrators[Math.floor(chainNarrators.length / 2)]?.id
 
   const startEditingProfile = () => {
-    if (!selectedDetail || selectedDetail === 'error' || !selected) return
+    if (!selectedDetail || selectedDetail === 'error' || !selected || selected.id >= KG_NARRATOR_OFFSET) return
     setProfileDraft(draftFromNarrator(selected))
     setProfileSaveError('')
     setEditingProfile(true)
@@ -715,7 +809,7 @@ function Explorer({ onHome }: { onHome: () => void }) {
   }
 
   const saveProfile = async () => {
-    if (!selected) return
+    if (!selected || selected.id >= KG_NARRATOR_OFFSET) return
     const { id } = selected
     const original = draftFromNarrator(selected)
     const changedFields = Object.fromEntries(
@@ -1012,7 +1106,7 @@ function Explorer({ onHome }: { onHome: () => void }) {
         <main className="main-content">
           <section className="hadith-header">
             <div className="breadcrumb">
-              <span>Sahih al-Bukhari</span><b>/</b><span>{activeBook?.title || currentHadith?.chapter_title?.replace(/^Chapter:\s*/i, '') || 'Collection'}</span><b>/</b><strong>Hadith {currentHadith?.hadith_number || '—'}</strong>
+              <span>{kgHadithId === null ? 'Sahih al-Bukhari' : 'Knowledge Graph'}</span><b>/</b><span>{kgHadithId !== null ? currentHadith?.book_title : activeBook?.title || currentHadith?.chapter_title?.replace(/^Chapter:\s*/i, '') || 'Collection'}</span><b>/</b><strong>Hadith {currentHadith?.hadith_number || '—'}</strong>
             </div>
             <div className="hadith-title-row">
               <div className="hadith-title-copy">
@@ -1036,18 +1130,20 @@ function Explorer({ onHome }: { onHome: () => void }) {
                   Read full hadith <Icon name="arrow" size={15} />
                 </button>
               </div>
-              <div className="arabic-block">
-                <p className="arabic-text" lang="ar" dir="rtl">
+              <div className="arabic-block" dir="rtl">
+                <p className="arabic-text" lang="ar">
                   {isLoading ? 'Loading...' : (hadithIsLong ? arabicPreview.preview : arabicText)}
                 </p>
+
                 <button
+                  className="arabic-read-button"
                   type="button"
                   lang="ar"
                   dir="rtl"
                   onClick={() => setHadithReaderOpen(true)}
                   disabled={!currentHadith || isLoading}
                 >
-                  اقرأ الحديث كاملاً <Icon name="arrow" size={15} />
+                  قراءة الحديث كاملاً <span>←</span>
                 </button>
               </div>
             </div>
@@ -1068,8 +1164,33 @@ function Explorer({ onHome }: { onHome: () => void }) {
                     </select>
                   </label>
                 )}
-                {!isLoading && currentHadith && !chains.length && <p>No chain was extracted for this hadith.</p>}
+                {!isLoading && currentHadith && !chainNarrators.length && <p>No chain was extracted for this hadith.</p>}
               </div>
+              <button
+                className="knowledge-graph-load"
+                type="button"
+                disabled={isLoading}
+                onClick={() => void loadKnowledgeGraphHadith(17154)}
+              >
+                Load Knowledge Graph Hadith 17154
+              </button>
+              {kgHadithId !== null && (
+                <label>
+                  Knowledge Graph isnād{' '}
+                  <select value={selectedKgSanadId ?? ''} onChange={(event) => {
+                    const path = kgChains.find(chain => chain.sanad_id === Number(event.target.value))
+                    if (!path) return
+                    setSelectedKgSanadId(path.sanad_id)
+                    applyChain(path)
+                  }}>
+                    {kgChains.map(path => (
+                      <option key={path.sanad_id} value={path.sanad_id}>
+                        Chain {path.sanad_id} · {path.grade || 'Unrated'} · {path.narrators.length} narrators
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
             </div>
 
             <div className="graph-legend-row">
@@ -1286,7 +1407,7 @@ function Explorer({ onHome }: { onHome: () => void }) {
             onOpen={openRelatedNarrator}
             onRetry={() => retryNarratorDetails(selected.id)}
           />
-          {editor.can_edit_biographies && selectedDetail && selectedDetail !== 'error' && (
+          {editor.can_edit_biographies && selected.id < KG_NARRATOR_OFFSET && selectedDetail && selectedDetail !== 'error' && (
             <div className="profile-section">
               <button type="button" onClick={startEditingProfile}>
                 Edit profile <Icon name="arrow" size={15} />

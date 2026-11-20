@@ -378,19 +378,90 @@
 .quote-rule { align-self: stretch; border-right: 1px solid #d8d5ca; color: #a77b45; font-family: Georgia, serif; font-size: 12px; }
 .quote-rule span { display: block; margin-top: 1px; }
 .translation p { margin: 0; color: #445550; line-height: 1.65; font-family: Georgia, serif; font-size: 13px; }
-.translation button, .profile-section > button, .arabic-block > button { border: 0; background: transparent; color: #2b675c; padding: 0; margin-top: 11px; font-size: 10px; font-weight: 700; display: flex; align-items: center; gap: 6px; cursor: pointer; }
-.arabic-block { padding-left: 22px; border-left: 1px solid #d8d5ca; }
+
+.translation button, .profile-section > button, .arabic-block > button {
+  border: 0;
+  background: transparent;
+  color: #2b675c;
+  padding: 0;
+  margin-top: 11px;
+  font-size: 10px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.translation button:hover {
+  color: #a77b45;
+  transition: color 0.2s ease;
+}
+
+.arabic-block {
+  padding-left: 22px;
+  border-left: 1px solid #d8d5ca;
+}
+
 .arabic-block > button {
   margin-left: auto;
   font-family: var(--font-arabic);
   font-size: 14px;
   font-weight: 600;
 }
-.arabic-block > button svg { transform: scaleX(-1); }
-.arabic-text { margin: 0; font-family: 'Noto Naskh Arabic', serif; color: #263e39; font-size: 21px; line-height: 1.85; text-align: right; }
+
+.arabic-block > button svg {
+  transform: scaleX(-1);
+}
+
+.arabic-text {
+  margin: 0;
+  font-family: 'Noto Naskh Arabic', serif;
+  color: #263e39;
+  font-size: 21px;
+  line-height: 1.85;
+  text-align: right;
+}
+
+.arabic-read-button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #2b675c;
+  font-family: 'Noto Naskh Arabic', serif;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.85;
+  cursor: pointer;
+}
+
+.arabic-read-button:hover {
+  color: #a77b45;
+}
+
+.arabic-read-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 
 .visualizer { padding: 22px 32px 30px; }
 .visualizer-toolbar { display: flex; justify-content: space-between; align-items: end; margin-bottom: 10px; }
+.visualizer-toolbar:has(.knowledge-graph-load) { flex-wrap: wrap; gap: 8px 16px; }
+.knowledge-graph-load {
+  padding: 8px 12px;
+  border: 1px solid #b99a64;
+  border-radius: 6px;
+  background: #fffaf0;
+  color: #54452b;
+  font-weight: 600;
+  cursor: pointer;
+}
+.knowledge-graph-load:disabled { opacity: .5; cursor: wait; }
 .visualizer-toolbar h2 { margin: 0; color: #243c37; font-family: Georgia, serif; font-weight: 500; font-size: 18px; }
 .visualizer-toolbar h2 span { font-family: 'DM Sans', sans-serif; font-size: 9px; font-weight: 600; color: #84918d; margin-left: 6px; }
 .graph-actions { display: flex; align-items: center; gap: 6px; }
@@ -773,8 +844,23 @@
   .sidebar-close { display: grid; place-items: center; }
   .hadith-header, .visualizer { padding-left: 17px; padding-right: 17px; }
   .hadith-text { grid-template-columns: 20px 1fr; }
-  .arabic-block { grid-column: 2; padding: 14px 0 0; border-left: 0; border-top: 1px solid #d8d5ca; }
-  .graph-canvas { height: 560px; }
+
+  .arabic-block {
+    grid-column: 2;
+    padding: 14px 0 0;
+    border-left: 0;
+    border-top: 1px solid #d8d5ca;
+  }
+
+  .arabic-block .arabic-text {
+    padding: 0;
+    border: 0;
+  }
+
+  .graph-canvas {
+    height: 560px;
+  }
+
   .edge-evidence { width: calc(100vw - 55px); left: 20px; transform: none; }
   .reopen-panel { display: none; }
 }

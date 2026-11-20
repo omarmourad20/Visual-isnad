@@ -7,6 +7,7 @@ export type NarratorReference = {
 }
 
 export type NarratorRecord = NarratorReference & {
+  aqwal?: { alemId: number; alem: string; qawl: string }[]
   aliases?: string
   biography?: string
   birth_display?: string
@@ -147,6 +148,17 @@ export default function NarratorProfile({ record, status, onOpen, onRetry }: {
               <ul className="narrator-tag-list" role="list">
                 {tags.map(tag => <li key={tag} dir="auto">{tag}</li>)}
               </ul>
+            </section>
+          )}
+          {!!record.aqwal?.length && (
+            <section lang="ar" dir="rtl">
+              <h3>أقوال العلماء ({record.aqwal.length})</h3>
+              {record.aqwal.map((item, index) => (
+                <div key={`${item.alemId}-${index}`}>
+                  <strong>{item.alem}</strong>
+                  <p className="narrator-source-text">{item.qawl}</p>
+                </div>
+              ))}
             </section>
           )}
           <section aria-label="Narrator relationships">
