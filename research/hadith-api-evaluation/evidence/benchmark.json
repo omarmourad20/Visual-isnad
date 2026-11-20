@@ -1,0 +1,1292 @@
+{
+  "seed": 17154,
+  "sample_refs": [
+    "1",
+    "5",
+    "15",
+    "32",
+    "74",
+    "94",
+    "188",
+    "765",
+    "1067",
+    "7478",
+    "6770",
+    "4648",
+    "6122",
+    "5006",
+    "4211",
+    "6722",
+    "742",
+    "2858"
+  ],
+  "visual": {
+    "hadiths": 7277,
+    "narrators": 32476,
+    "edges": 39336,
+    "multiple_route_hadiths": 58,
+    "hadiths_without_edges": 39,
+    "hadiths_with_prophet_edge": 2098,
+    "unresolved_teacher_edges": 8084,
+    "foreign_key_violations": 0,
+    "sample": {
+      "1": {
+        "book_reference": "Book 1, Hadith 1",
+        "paths_student_to_teacher": [
+          [
+            [
+              30001,
+              30418
+            ],
+            [
+              30418,
+              20005
+            ],
+            [
+              20005,
+              11062
+            ],
+            [
+              11062,
+              11213
+            ],
+            [
+              11213,
+              11042
+            ],
+            [
+              11042,
+              3
+            ],
+            [
+              3,
+              1
+            ]
+          ]
+        ]
+      },
+      "5": {
+        "book_reference": "Book 1, Hadith 5",
+        "paths_student_to_teacher": [
+          [
+            [
+              30001,
+              20040
+            ],
+            [
+              20040,
+              20469
+            ],
+            [
+              20469,
+              11399
+            ],
+            [
+              11399,
+              11050
+            ],
+            [
+              11050,
+              17
+            ]
+          ]
+        ]
+      },
+      "15": {
+        "book_reference": "Book 2, Hadith 8",
+        "paths_student_to_teacher": [
+          [
+            [
+              30001,
+              30400
+            ],
+            [
+              30400,
+              20208
+            ],
+            [
+              20208,
+              11295
+            ],
+            [
+              11295,
+              19
+            ],
+            [
+              19,
+              1
+            ]
+          ],
+          [
+            [
+              30001,
+              20404
+            ],
+            [
+              20404,
+              20020
+            ],
+            [
+              20020,
+              11019
+            ],
+            [
+              11019,
+              19
+            ],
+            [
+              19,
+              1
+            ]
+          ]
+        ]
+      },
+      "32": {
+        "book_reference": "Book 2, Hadith 25",
+        "paths_student_to_teacher": [
+          [
+            [
+              30001,
+              20296
+            ],
+            [
+              20296,
+              20020
+            ],
+            [
+              20020,
+              11060
+            ],
+            [
+              11060,
+              11051
+            ],
+            [
+              11051,
+              11017
+            ],
+            [
+              11017,
+              16
+            ],
+            [
+              16,
+              800029
+            ]
+          ],
+          [
+            [
+              30001,
+              30126
+            ],
+            [
+              30126,
+              20278
+            ],
+            [
+              20278,
+              20020
+            ],
+            [
+              20020,
+              11060
+            ],
+            [
+              11060,
+              11051
+            ],
+            [
+              11051,
+              11017
+            ],
+            [
+              11017,
+              16
+            ],
+            [
+              16,
+              800030
+            ]
+          ]
+        ]
+      },
+      "74": {
+        "book_reference": "Book 3, Hadith 16",
+        "paths_student_to_teacher": [
+          [
+            [
+              30001,
+              30109
+            ],
+            [
+              30109,
+              20184
+            ],
+            [
+              20184,
+              20150
+            ],
+            [
+              20150,
+              11176
+            ],
+            [
+              11176,
+              800076
+            ],
+            [
+              800076,
+              800077
+            ],
+            [
+              800077,
+              17
+            ]
+          ]
+        ]
+      },
+      "94": {
+        "book_reference": "Book 3, Hadith 36",
+        "paths_student_to_teacher": [
+          [
+            [
+              30001,
+              30149
+            ],
+            [
+              30149,
+              20250
+            ],
+            [
+              20250,
+              11599
+            ],
+            [
+              11599,
+              11270
+            ],
+            [
+              11270,
+              19
+            ],
+            [
+              19,
+              1
+            ]
+          ]
+        ]
+      },
+      "188": {
+        "book_reference": "Book 4, Hadith 54",
+        "paths_student_to_teacher": []
+      },
+      "765": {
+        "book_reference": "Book 10, Hadith 159",
+        "paths_student_to_teacher": [
+          [
+            [
+              30001,
+              30355
+            ],
+            [
+              30355,
+              20001
+            ],
+            [
+              20001,
+              11013
+            ],
+            [
+              11013,
+              11058
+            ],
+            [
+              11058,
+              871
+            ],
+            [
+              871,
+              1
+            ]
+          ]
+        ]
+      },
+      "1067": {
+        "book_reference": "Book 17, Hadith 1",
+        "paths_student_to_teacher": [
+          [
+            [
+              30001,
+              30160
+            ],
+            [
+              30160,
+              20278
+            ],
+            [
+              20278,
+              20020
+            ],
+            [
+              20020,
+              11049
+            ],
+            [
+              11049,
+              11054
+            ],
+            [
+              11054,
+              16
+            ]
+          ]
+        ]
+      },
+      "7478": {
+        "book_reference": "Book 97, Hadith 104",
+        "paths_student_to_teacher": [
+          [
+            [
+              30001,
+              30351
+            ],
+            [
+              30351,
+              808062
+            ],
+            [
+              808062,
+              20024
+            ],
+            [
+              20024,
+              11013
+            ],
+            [
+              11013,
+              11004
+            ],
+            [
+              11004,
+              17
+            ]
+          ]
+        ]
+      },
+      "6770": {
+        "book_reference": "Book 85, Hadith 46",
+        "paths_student_to_teacher": [
+          [
+            [
+              30001,
+              30367
+            ],
+            [
+              30367,
+              20023
+            ],
+            [
+              20023,
+              11013
+            ],
+            [
+              11013,
+              10511
+            ],
+            [
+              10511,
+              53
+            ],
+            [
+              53,
+              807295
+            ]
+          ]
+        ]
+      },
+      "4648": {
+        "book_reference": "Book 65, Hadith 170",
+        "paths_student_to_teacher": [
+          [
+            [
+              30001,
+              805074
+            ],
+            [
+              805074,
+              30150
+            ],
+            [
+              30150,
+              20286
+            ],
+            [
+              20286,
+              20020
+            ],
+            [
+              20020,
+              805075
+            ]
+          ]
+        ]
+      },
+      "6122": {
+        "book_reference": "Book 78, Hadith 149",
+        "paths_student_to_teacher": [
+          [
+            [
+              30001,
+              20404
+            ],
+            [
+              20404,
+              20020
+            ],
+            [
+              20020,
+              11389
+            ],
+            [
+              11389,
+              18
+            ],
+            [
+              18,
+              1
+            ]
+          ]
+        ]
+      },
+      "5006": {
+        "book_reference": "Book 66, Hadith 28",
+        "paths_student_to_teacher": [
+          [
+            [
+              30001,
+              10950
+            ],
+            [
+              10950,
+              20031
+            ],
+            [
+              20031,
+              20020
+            ],
+            [
+              20020,
+              11159
+            ],
+            [
+              11159,
+              11420
+            ],
+            [
+              11420,
+              805511
+            ]
+          ]
+        ]
+      },
+      "4211": {
+        "book_reference": "Book 64, Hadith 251",
+        "paths_student_to_teacher": [
+          [
+            [
+              30001,
+              30235
+            ],
+            [
+              30235,
+              20185
+            ],
+            [
+              20185,
+              804539
+            ],
+            [
+              804539,
+              804540
+            ]
+          ],
+          [
+            [
+              30001,
+              30226
+            ],
+            [
+              30226,
+              20029
+            ],
+            [
+              20029,
+              20185
+            ],
+            [
+              20185,
+              804541
+            ],
+            [
+              804541,
+              804542
+            ]
+          ]
+        ]
+      },
+      "6722": {
+        "book_reference": "Book 84, Hadith 15",
+        "paths_student_to_teacher": [
+          [
+            [
+              30001,
+              20280
+            ],
+            [
+              20280,
+              20262
+            ],
+            [
+              20262,
+              11071
+            ],
+            [
+              11071,
+              11016
+            ],
+            [
+              11016,
+              955
+            ],
+            [
+              955,
+              1
+            ]
+          ]
+        ]
+      },
+      "742": {
+        "book_reference": "Book 10, Hadith 136",
+        "paths_student_to_teacher": [
+          [
+            [
+              30001,
+              30160
+            ],
+            [
+              30160,
+              20278
+            ],
+            [
+              20278,
+              20020
+            ],
+            [
+              20020,
+              11019
+            ],
+            [
+              11019,
+              19
+            ],
+            [
+              19,
+              1
+            ]
+          ]
+        ]
+      },
+      "2858": {
+        "book_reference": "Book 56, Hadith 74",
+        "paths_student_to_teacher": [
+          [
+            [
+              30001,
+              30330
+            ],
+            [
+              30330,
+              20428
+            ],
+            [
+              20428,
+              11013
+            ],
+            [
+              11013,
+              11011
+            ],
+            [
+              11011,
+              18
+            ],
+            [
+              18,
+              1
+            ]
+          ]
+        ]
+      }
+    }
+  },
+  "sources": {
+    "mhashim": {
+      "rows": 7008,
+      "distinct_ids": 7008,
+      "duplicate_id_groups": 0,
+      "nonempty_arabic": 7008,
+      "nonempty_english": 0,
+      "repeated_arabic_text_groups": 8,
+      "local_refs_with_any_exact_arabic_match": 1640,
+      "local_refs_with_any_exact_english_match": 0,
+      "sample": {
+        "1": {
+          "arabic_text_candidates": [
+            "1"
+          ],
+          "english_text_candidates": [],
+          "same_number_book_reference_agrees": false
+        },
+        "5": {
+          "arabic_text_candidates": [],
+          "english_text_candidates": [],
+          "same_number_book_reference_agrees": false
+        },
+        "15": {
+          "arabic_text_candidates": [],
+          "english_text_candidates": [],
+          "same_number_book_reference_agrees": false
+        },
+        "32": {
+          "arabic_text_candidates": [],
+          "english_text_candidates": [],
+          "same_number_book_reference_agrees": false
+        },
+        "74": {
+          "arabic_text_candidates": [],
+          "english_text_candidates": [],
+          "same_number_book_reference_agrees": false
+        },
+        "94": {
+          "arabic_text_candidates": [
+            "92"
+          ],
+          "english_text_candidates": [],
+          "same_number_book_reference_agrees": false
+        },
+        "188": {
+          "arabic_text_candidates": [],
+          "english_text_candidates": [],
+          "same_number_book_reference_agrees": false
+        },
+        "765": {
+          "arabic_text_candidates": [
+            "723"
+          ],
+          "english_text_candidates": [],
+          "same_number_book_reference_agrees": false
+        },
+        "1067": {
+          "arabic_text_candidates": [],
+          "english_text_candidates": [],
+          "same_number_book_reference_agrees": false
+        },
+        "7478": {
+          "arabic_text_candidates": [],
+          "english_text_candidates": [],
+          "same_number_book_reference_agrees": false
+        },
+        "6770": {
+          "arabic_text_candidates": [],
+          "english_text_candidates": [],
+          "same_number_book_reference_agrees": false
+        },
+        "4648": {
+          "arabic_text_candidates": [],
+          "english_text_candidates": [],
+          "same_number_book_reference_agrees": false
+        },
+        "6122": {
+          "arabic_text_candidates": [],
+          "english_text_candidates": [],
+          "same_number_book_reference_agrees": false
+        },
+        "5006": {
+          "arabic_text_candidates": [
+            "4622"
+          ],
+          "english_text_candidates": [],
+          "same_number_book_reference_agrees": false
+        },
+        "4211": {
+          "arabic_text_candidates": [],
+          "english_text_candidates": [],
+          "same_number_book_reference_agrees": false
+        },
+        "6722": {
+          "arabic_text_candidates": [],
+          "english_text_candidates": [],
+          "same_number_book_reference_agrees": false
+        },
+        "742": {
+          "arabic_text_candidates": [
+            "700"
+          ],
+          "english_text_candidates": [],
+          "same_number_book_reference_agrees": false
+        },
+        "2858": {
+          "arabic_text_candidates": [],
+          "english_text_candidates": [],
+          "same_number_book_reference_agrees": false
+        }
+      }
+    },
+    "mhashim_vocalized": {
+      "rows": 7008,
+      "distinct_ids": 7008,
+      "duplicate_id_groups": 0,
+      "nonempty_arabic": 7008,
+      "nonempty_english": 0,
+      "repeated_arabic_text_groups": 8,
+      "local_refs_with_any_exact_arabic_match": 1640,
+      "local_refs_with_any_exact_english_match": 0,
+      "sample": {
+        "1": {
+          "arabic_text_candidates": [
+            "1"
+          ],
+          "english_text_candidates": [],
+          "same_number_book_reference_agrees": false
+        },
+        "5": {
+          "arabic_text_candidates": [],
+          "english_text_candidates": [],
+          "same_number_book_reference_agrees": false
+        },
+        "15": {
+          "arabic_text_candidates": [],
+          "english_text_candidates": [],
+          "same_number_book_reference_agrees": false
+        },
+        "32": {
+          "arabic_text_candidates": [],
+          "english_text_candidates": [],
+          "same_number_book_reference_agrees": false
+        },
+        "74": {
+          "arabic_text_candidates": [],
+          "english_text_candidates": [],
+          "same_number_book_reference_agrees": false
+        },
+        "94": {
+          "arabic_text_candidates": [
+            "92"
+          ],
+          "english_text_candidates": [],
+          "same_number_book_reference_agrees": false
+        },
+        "188": {
+          "arabic_text_candidates": [],
+          "english_text_candidates": [],
+          "same_number_book_reference_agrees": false
+        },
+        "765": {
+          "arabic_text_candidates": [
+            "723"
+          ],
+          "english_text_candidates": [],
+          "same_number_book_reference_agrees": false
+        },
+        "1067": {
+          "arabic_text_candidates": [],
+          "english_text_candidates": [],
+          "same_number_book_reference_agrees": false
+        },
+        "7478": {
+          "arabic_text_candidates": [],
+          "english_text_candidates": [],
+          "same_number_book_reference_agrees": false
+        },
+        "6770": {
+          "arabic_text_candidates": [],
+          "english_text_candidates": [],
+          "same_number_book_reference_agrees": false
+        },
+        "4648": {
+          "arabic_text_candidates": [],
+          "english_text_candidates": [],
+          "same_number_book_reference_agrees": false
+        },
+        "6122": {
+          "arabic_text_candidates": [],
+          "english_text_candidates": [],
+          "same_number_book_reference_agrees": false
+        },
+        "5006": {
+          "arabic_text_candidates": [
+            "4622"
+          ],
+          "english_text_candidates": [],
+          "same_number_book_reference_agrees": false
+        },
+        "4211": {
+          "arabic_text_candidates": [],
+          "english_text_candidates": [],
+          "same_number_book_reference_agrees": false
+        },
+        "6722": {
+          "arabic_text_candidates": [],
+          "english_text_candidates": [],
+          "same_number_book_reference_agrees": false
+        },
+        "742": {
+          "arabic_text_candidates": [
+            "700"
+          ],
+          "english_text_candidates": [],
+          "same_number_book_reference_agrees": false
+        },
+        "2858": {
+          "arabic_text_candidates": [],
+          "english_text_candidates": [],
+          "same_number_book_reference_agrees": false
+        }
+      }
+    },
+    "jaguar": {
+      "rows": 7252,
+      "distinct_ids": 7252,
+      "duplicate_id_groups": 0,
+      "nonempty_arabic": 7252,
+      "nonempty_english": 7252,
+      "repeated_arabic_text_groups": 8,
+      "local_refs_with_any_exact_arabic_match": 7252,
+      "local_refs_with_any_exact_english_match": 7247,
+      "sample": {
+        "1": {
+          "arabic_text_candidates": [
+            "1"
+          ],
+          "english_text_candidates": [
+            "1"
+          ],
+          "same_number_book_reference_agrees": true
+        },
+        "5": {
+          "arabic_text_candidates": [
+            "5"
+          ],
+          "english_text_candidates": [
+            "5"
+          ],
+          "same_number_book_reference_agrees": true
+        },
+        "15": {
+          "arabic_text_candidates": [
+            "15"
+          ],
+          "english_text_candidates": [
+            "15"
+          ],
+          "same_number_book_reference_agrees": true
+        },
+        "32": {
+          "arabic_text_candidates": [
+            "32"
+          ],
+          "english_text_candidates": [
+            "32"
+          ],
+          "same_number_book_reference_agrees": true
+        },
+        "74": {
+          "arabic_text_candidates": [
+            "74"
+          ],
+          "english_text_candidates": [
+            "74"
+          ],
+          "same_number_book_reference_agrees": true
+        },
+        "94": {
+          "arabic_text_candidates": [
+            "94"
+          ],
+          "english_text_candidates": [
+            "94"
+          ],
+          "same_number_book_reference_agrees": true
+        },
+        "188": {
+          "arabic_text_candidates": [
+            "188"
+          ],
+          "english_text_candidates": [
+            "188"
+          ],
+          "same_number_book_reference_agrees": true
+        },
+        "765": {
+          "arabic_text_candidates": [
+            "765"
+          ],
+          "english_text_candidates": [
+            "765"
+          ],
+          "same_number_book_reference_agrees": true
+        },
+        "1067": {
+          "arabic_text_candidates": [
+            "1067"
+          ],
+          "english_text_candidates": [
+            "1067"
+          ],
+          "same_number_book_reference_agrees": true
+        },
+        "7478": {
+          "arabic_text_candidates": [
+            "7478"
+          ],
+          "english_text_candidates": [
+            "7478"
+          ],
+          "same_number_book_reference_agrees": true
+        },
+        "6770": {
+          "arabic_text_candidates": [
+            "6770"
+          ],
+          "english_text_candidates": [
+            "6770"
+          ],
+          "same_number_book_reference_agrees": true
+        },
+        "4648": {
+          "arabic_text_candidates": [
+            "4648"
+          ],
+          "english_text_candidates": [
+            "4648"
+          ],
+          "same_number_book_reference_agrees": true
+        },
+        "6122": {
+          "arabic_text_candidates": [
+            "6122"
+          ],
+          "english_text_candidates": [
+            "6122"
+          ],
+          "same_number_book_reference_agrees": true
+        },
+        "5006": {
+          "arabic_text_candidates": [
+            "5006"
+          ],
+          "english_text_candidates": [
+            "5006"
+          ],
+          "same_number_book_reference_agrees": true
+        },
+        "4211": {
+          "arabic_text_candidates": [
+            "4211"
+          ],
+          "english_text_candidates": [
+            "4211"
+          ],
+          "same_number_book_reference_agrees": true
+        },
+        "6722": {
+          "arabic_text_candidates": [
+            "6722"
+          ],
+          "english_text_candidates": [
+            "6722"
+          ],
+          "same_number_book_reference_agrees": true
+        },
+        "742": {
+          "arabic_text_candidates": [
+            "742"
+          ],
+          "english_text_candidates": [
+            "742"
+          ],
+          "same_number_book_reference_agrees": true
+        },
+        "2858": {
+          "arabic_text_candidates": [
+            "2858"
+          ],
+          "english_text_candidates": [
+            "2858"
+          ],
+          "same_number_book_reference_agrees": true
+        }
+      }
+    },
+    "fawaz_ar": {
+      "rows": 7589,
+      "distinct_ids": 7589,
+      "duplicate_id_groups": 0,
+      "nonempty_arabic": 7580,
+      "nonempty_english": 0,
+      "repeated_arabic_text_groups": 297,
+      "local_refs_with_any_exact_arabic_match": 7266,
+      "local_refs_with_any_exact_english_match": 0,
+      "sample": {
+        "1": {
+          "arabic_text_candidates": [
+            "1"
+          ],
+          "english_text_candidates": [],
+          "same_number_book_reference_agrees": true
+        },
+        "5": {
+          "arabic_text_candidates": [
+            "5"
+          ],
+          "english_text_candidates": [],
+          "same_number_book_reference_agrees": true
+        },
+        "15": {
+          "arabic_text_candidates": [
+            "15"
+          ],
+          "english_text_candidates": [],
+          "same_number_book_reference_agrees": true
+        },
+        "32": {
+          "arabic_text_candidates": [
+            "32"
+          ],
+          "english_text_candidates": [],
+          "same_number_book_reference_agrees": true
+        },
+        "74": {
+          "arabic_text_candidates": [
+            "74"
+          ],
+          "english_text_candidates": [],
+          "same_number_book_reference_agrees": true
+        },
+        "94": {
+          "arabic_text_candidates": [
+            "94"
+          ],
+          "english_text_candidates": [],
+          "same_number_book_reference_agrees": true
+        },
+        "188": {
+          "arabic_text_candidates": [
+            "188"
+          ],
+          "english_text_candidates": [],
+          "same_number_book_reference_agrees": true
+        },
+        "765": {
+          "arabic_text_candidates": [
+            "765"
+          ],
+          "english_text_candidates": [],
+          "same_number_book_reference_agrees": true
+        },
+        "1067": {
+          "arabic_text_candidates": [
+            "1067"
+          ],
+          "english_text_candidates": [],
+          "same_number_book_reference_agrees": true
+        },
+        "7478": {
+          "arabic_text_candidates": [
+            "7478"
+          ],
+          "english_text_candidates": [],
+          "same_number_book_reference_agrees": true
+        },
+        "6770": {
+          "arabic_text_candidates": [
+            "6770"
+          ],
+          "english_text_candidates": [],
+          "same_number_book_reference_agrees": true
+        },
+        "4648": {
+          "arabic_text_candidates": [
+            "4648"
+          ],
+          "english_text_candidates": [],
+          "same_number_book_reference_agrees": true
+        },
+        "6122": {
+          "arabic_text_candidates": [
+            "6122"
+          ],
+          "english_text_candidates": [],
+          "same_number_book_reference_agrees": true
+        },
+        "5006": {
+          "arabic_text_candidates": [
+            "5006"
+          ],
+          "english_text_candidates": [],
+          "same_number_book_reference_agrees": true
+        },
+        "4211": {
+          "arabic_text_candidates": [
+            "4211"
+          ],
+          "english_text_candidates": [],
+          "same_number_book_reference_agrees": true
+        },
+        "6722": {
+          "arabic_text_candidates": [
+            "6722"
+          ],
+          "english_text_candidates": [],
+          "same_number_book_reference_agrees": true
+        },
+        "742": {
+          "arabic_text_candidates": [
+            "742"
+          ],
+          "english_text_candidates": [],
+          "same_number_book_reference_agrees": true
+        },
+        "2858": {
+          "arabic_text_candidates": [
+            "2858"
+          ],
+          "english_text_candidates": [],
+          "same_number_book_reference_agrees": true
+        }
+      }
+    },
+    "fawaz_en": {
+      "rows": 7589,
+      "distinct_ids": 7589,
+      "duplicate_id_groups": 0,
+      "nonempty_arabic": 0,
+      "nonempty_english": 7580,
+      "repeated_arabic_text_groups": 0,
+      "local_refs_with_any_exact_arabic_match": 0,
+      "local_refs_with_any_exact_english_match": 5790,
+      "sample": {
+        "1": {
+          "arabic_text_candidates": [],
+          "english_text_candidates": [
+            "1"
+          ],
+          "same_number_book_reference_agrees": true
+        },
+        "5": {
+          "arabic_text_candidates": [],
+          "english_text_candidates": [
+            "5"
+          ],
+          "same_number_book_reference_agrees": true
+        },
+        "15": {
+          "arabic_text_candidates": [],
+          "english_text_candidates": [
+            "15"
+          ],
+          "same_number_book_reference_agrees": true
+        },
+        "32": {
+          "arabic_text_candidates": [],
+          "english_text_candidates": [],
+          "same_number_book_reference_agrees": true
+        },
+        "74": {
+          "arabic_text_candidates": [],
+          "english_text_candidates": [],
+          "same_number_book_reference_agrees": true
+        },
+        "94": {
+          "arabic_text_candidates": [],
+          "english_text_candidates": [],
+          "same_number_book_reference_agrees": true
+        },
+        "188": {
+          "arabic_text_candidates": [],
+          "english_text_candidates": [
+            "188"
+          ],
+          "same_number_book_reference_agrees": true
+        },
+        "765": {
+          "arabic_text_candidates": [],
+          "english_text_candidates": [
+            "765"
+          ],
+          "same_number_book_reference_agrees": true
+        },
+        "1067": {
+          "arabic_text_candidates": [],
+          "english_text_candidates": [],
+          "same_number_book_reference_agrees": true
+        },
+        "7478": {
+          "arabic_text_candidates": [],
+          "english_text_candidates": [],
+          "same_number_book_reference_agrees": true
+        },
+        "6770": {
+          "arabic_text_candidates": [],
+          "english_text_candidates": [],
+          "same_number_book_reference_agrees": true
+        },
+        "4648": {
+          "arabic_text_candidates": [],
+          "english_text_candidates": [],
+          "same_number_book_reference_agrees": true
+        },
+        "6122": {
+          "arabic_text_candidates": [],
+          "english_text_candidates": [
+            "6122"
+          ],
+          "same_number_book_reference_agrees": true
+        },
+        "5006": {
+          "arabic_text_candidates": [],
+          "english_text_candidates": [
+            "5006"
+          ],
+          "same_number_book_reference_agrees": true
+        },
+        "4211": {
+          "arabic_text_candidates": [],
+          "english_text_candidates": [],
+          "same_number_book_reference_agrees": true
+        },
+        "6722": {
+          "arabic_text_candidates": [],
+          "english_text_candidates": [
+            "6722"
+          ],
+          "same_number_book_reference_agrees": true
+        },
+        "742": {
+          "arabic_text_candidates": [],
+          "english_text_candidates": [
+            "742"
+          ],
+          "same_number_book_reference_agrees": true
+        },
+        "2858": {
+          "arabic_text_candidates": [],
+          "english_text_candidates": [
+            "2858"
+          ],
+          "same_number_book_reference_agrees": true
+        }
+      }
+    }
+  }
+}

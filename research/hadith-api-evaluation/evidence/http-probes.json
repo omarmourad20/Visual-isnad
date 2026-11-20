@@ -1,0 +1,41 @@
+{
+  "sunnah": {
+    "status": 403,
+    "content_type": "application/json",
+    "message": "Forbidden"
+  },
+  "hadithapi": {
+    "status": 403,
+    "content_type": "application/json; charset=utf-8"
+  },
+  "fawaz": {
+    "status": 200,
+    "content_type": "application/json; charset=utf-8",
+    "json": true,
+    "keys": [
+      "hadiths",
+      "metadata"
+    ],
+    "hadiths_count": 1
+  },
+  "hadeethenc": {
+    "status": 403,
+    "content_type": "application/json; charset=utf-8"
+  },
+  "dorar": {
+    "status": 403,
+    "content_type": "application/json; charset=utf-8"
+  },
+  "kg_stats": {
+    "status": null,
+    "error": "<urlopen error [Errno 111] Connection refused>"
+  },
+  "kg_hadith": {
+    "status": null,
+    "error": "<urlopen error [Errno 111] Connection refused>"
+  },
+  "kg_rawi": {
+    "status": null,
+    "error": "<urlopen error [Errno 111] Connection refused>"
+  }
+}

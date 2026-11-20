@@ -1,0 +1,5108 @@
+{
+  "rubric": {
+    "0": "verified absent in examined product or schema",
+    "1": "minimal capability",
+    "2": "limited",
+    "3": "usable with material caveats",
+    "4": "strong with known gaps",
+    "5": "strongest observed fit for the feature",
+    "null": "unknown"
+  },
+  "weights": {
+    "isnad": 30,
+    "profiles": 20,
+    "text": 15,
+    "coverage": 10,
+    "search_refs": 10,
+    "reliability": 5,
+    "integration": 5,
+    "rights_cost": 5
+  },
+  "matrix": {
+    "visual": {
+      "scores_0_to_5": {
+        "isnad": 4,
+        "profiles": 3,
+        "text": 4,
+        "coverage": 2,
+        "search_refs": 3,
+        "reliability": null,
+        "integration": 5,
+        "rights_cost": null
+      },
+      "known_weight": 90,
+      "weighted_points_on_known_criteria": 63.0,
+      "evidence_summary": "Current application baseline. Reviewed routes and local editor model; known gaps, single collection and uncleared upstream redistribution."
+    },
+    "kg": {
+      "scores_0_to_5": {
+        "isnad": 4,
+        "profiles": 5,
+        "text": 3,
+        "coverage": 5,
+        "search_refs": 5,
+        "reliability": null,
+        "integration": 3,
+        "rights_cost": 4
+      },
+      "known_weight": 95,
+      "weighted_points_on_known_criteria": 80.0,
+      "evidence_summary": "Ordered, linked and separately graded sanads; rich identified criticism and offline coverage. Bukhari gaps and representation differences remain."
+    },
+    "sunnah": {
+      "scores_0_to_5": {
+        "isnad": 1,
+        "profiles": 0,
+        "text": null,
+        "coverage": null,
+        "search_refs": 4,
+        "reliability": null,
+        "integration": 3,
+        "rights_cost": null
+      },
+      "known_weight": 65,
+      "weighted_points_on_known_criteria": 17.0,
+      "evidence_summary": "OpenAPI exposes text and reference lookups, without typed ordered isnads or narrator dossiers in the inspected schema. Live authenticated corpus unavailable."
+    },
+    "mhashim": {
+      "scores_0_to_5": {
+        "isnad": 1,
+        "profiles": 0,
+        "text": 3,
+        "coverage": 3,
+        "search_refs": 1,
+        "reliability": null,
+        "integration": 4,
+        "rights_cost": 3
+      },
+      "known_weight": 95,
+      "weighted_points_on_known_criteria": 30.0,
+      "evidence_summary": "Vocalized Arabic and commentary; nine documented books, verified Bukhari CSV; no identity graph or translations. ODbL/DBCL obligations."
+    },
+    "hadithapi": {
+      "scores_0_to_5": {
+        "isnad": null,
+        "profiles": null,
+        "text": null,
+        "coverage": null,
+        "search_refs": 3,
+        "reliability": null,
+        "integration": 3,
+        "rights_cost": null
+      },
+      "known_weight": 15,
+      "weighted_points_on_known_criteria": 9.0,
+      "evidence_summary": "Documented text and book filtering; no authenticated data sample, reuse terms, rate limit or SLA verified."
+    },
+    "jaguar": {
+      "scores_0_to_5": {
+        "isnad": 2,
+        "profiles": 0,
+        "text": 4,
+        "coverage": 4,
+        "search_refs": 3,
+        "reliability": null,
+        "integration": 4,
+        "rights_cost": 3
+      },
+      "known_weight": 95,
+      "weighted_points_on_known_criteria": 45.0,
+      "evidence_summary": "Verified bilingual release and split Arabic fields. No ordered narrator IDs. CC0 structure; translation upstream rights unresolved."
+    },
+    "fawaz": {
+      "scores_0_to_5": {
+        "isnad": 1,
+        "profiles": 0,
+        "text": 4,
+        "coverage": 4,
+        "search_refs": 2,
+        "reliability": null,
+        "integration": 4,
+        "rights_cost": 3
+      },
+      "known_weight": 95,
+      "weighted_points_on_known_criteria": 37.0,
+      "evidence_summary": "Verified bilingual editions with book/hadith references, not a semantic or narrator index; 9 blank rows per tested Bukhari edition; verify translation rights."
+    },
+    "dorar": {
+      "scores_0_to_5": {
+        "isnad": null,
+        "profiles": null,
+        "text": null,
+        "coverage": null,
+        "search_refs": 3,
+        "reliability": null,
+        "integration": 2,
+        "rights_cost": null
+      },
+      "known_weight": 15,
+      "weighted_points_on_known_criteria": 8.0,
+      "evidence_summary": "Arabic query returned JSON-wrapped HTML with source/grade clues; no bulk or graph contract verified."
+    },
+    "hadeethenc": {
+      "scores_0_to_5": {
+        "isnad": null,
+        "profiles": null,
+        "text": null,
+        "coverage": null,
+        "search_refs": 2,
+        "reliability": null,
+        "integration": 3,
+        "rights_cost": null
+      },
+      "known_weight": 15,
+      "weighted_points_on_known_criteria": 7.0,
+      "evidence_summary": "Live curated category and listing API; edition-wide coverage and rights not evaluated."
+    }
+  },
+  "method": "Evidence-based ordinal feature fit, not accuracy estimates. Unknown weights are excluded from the available denominator. Partial totals are not a global rank.",
+  "recommended_current_single_source": "visual",
+  "recommended_expansion_graph_source": "kg",
+  "recommended_multi_source": [
+    "visual",
+    "kg",
+    "sunnah with access and permission",
+    "mhashim for editorial evidence"
+  ],
+  "http_probes": {
+    "sunnah": {
+      "status": 403,
+      "content_type": "application/json",
+      "message": "Forbidden"
+    },
+    "hadithapi": {
+      "status": 403,
+      "content_type": "application/json; charset=utf-8"
+    },
+    "fawaz": {
+      "status": 200,
+      "content_type": "application/json; charset=utf-8",
+      "json": true,
+      "keys": [
+        "hadiths",
+        "metadata"
+      ],
+      "hadiths_count": 1
+    },
+    "hadeethenc": {
+      "status": 403,
+      "content_type": "application/json; charset=utf-8"
+    },
+    "dorar": {
+      "status": 403,
+      "content_type": "application/json; charset=utf-8"
+    },
+    "kg_stats": {
+      "status": null,
+      "error": "<urlopen error [Errno 111] Connection refused>"
+    },
+    "kg_hadith": {
+      "status": null,
+      "error": "<urlopen error [Errno 111] Connection refused>"
+    },
+    "kg_rawi": {
+      "status": null,
+      "error": "<urlopen error [Errno 111] Connection refused>"
+    }
+  },
+  "supplemental_http_observations": {
+    "dorar_with_curl": 200,
+    "hadeethenc_category_and_list_with_curl": 200,
+    "hadithapi_public_unauthenticated": 403,
+    "gading_item": 503
+  },
+  "bukhari": {
+    "seed": 17154,
+    "sample_refs": [
+      "1",
+      "5",
+      "15",
+      "32",
+      "74",
+      "94",
+      "188",
+      "765",
+      "1067",
+      "7478",
+      "6770",
+      "4648",
+      "6122",
+      "5006",
+      "4211",
+      "6722",
+      "742",
+      "2858"
+    ],
+    "visual": {
+      "hadiths": 7277,
+      "narrators": 32476,
+      "edges": 39336,
+      "multiple_route_hadiths": 58,
+      "hadiths_without_edges": 39,
+      "hadiths_with_prophet_edge": 2098,
+      "unresolved_teacher_edges": 8084,
+      "foreign_key_violations": 0,
+      "sample": {
+        "1": {
+          "book_reference": "Book 1, Hadith 1",
+          "paths_student_to_teacher": [
+            [
+              [
+                30001,
+                30418
+              ],
+              [
+                30418,
+                20005
+              ],
+              [
+                20005,
+                11062
+              ],
+              [
+                11062,
+                11213
+              ],
+              [
+                11213,
+                11042
+              ],
+              [
+                11042,
+                3
+              ],
+              [
+                3,
+                1
+              ]
+            ]
+          ]
+        },
+        "5": {
+          "book_reference": "Book 1, Hadith 5",
+          "paths_student_to_teacher": [
+            [
+              [
+                30001,
+                20040
+              ],
+              [
+                20040,
+                20469
+              ],
+              [
+                20469,
+                11399
+              ],
+              [
+                11399,
+                11050
+              ],
+              [
+                11050,
+                17
+              ]
+            ]
+          ]
+        },
+        "15": {
+          "book_reference": "Book 2, Hadith 8",
+          "paths_student_to_teacher": [
+            [
+              [
+                30001,
+                30400
+              ],
+              [
+                30400,
+                20208
+              ],
+              [
+                20208,
+                11295
+              ],
+              [
+                11295,
+                19
+              ],
+              [
+                19,
+                1
+              ]
+            ],
+            [
+              [
+                30001,
+                20404
+              ],
+              [
+                20404,
+                20020
+              ],
+              [
+                20020,
+                11019
+              ],
+              [
+                11019,
+                19
+              ],
+              [
+                19,
+                1
+              ]
+            ]
+          ]
+        },
+        "32": {
+          "book_reference": "Book 2, Hadith 25",
+          "paths_student_to_teacher": [
+            [
+              [
+                30001,
+                20296
+              ],
+              [
+                20296,
+                20020
+              ],
+              [
+                20020,
+                11060
+              ],
+              [
+                11060,
+                11051
+              ],
+              [
+                11051,
+                11017
+              ],
+              [
+                11017,
+                16
+              ],
+              [
+                16,
+                800029
+              ]
+            ],
+            [
+              [
+                30001,
+                30126
+              ],
+              [
+                30126,
+                20278
+              ],
+              [
+                20278,
+                20020
+              ],
+              [
+                20020,
+                11060
+              ],
+              [
+                11060,
+                11051
+              ],
+              [
+                11051,
+                11017
+              ],
+              [
+                11017,
+                16
+              ],
+              [
+                16,
+                800030
+              ]
+            ]
+          ]
+        },
+        "74": {
+          "book_reference": "Book 3, Hadith 16",
+          "paths_student_to_teacher": [
+            [
+              [
+                30001,
+                30109
+              ],
+              [
+                30109,
+                20184
+              ],
+              [
+                20184,
+                20150
+              ],
+              [
+                20150,
+                11176
+              ],
+              [
+                11176,
+                800076
+              ],
+              [
+                800076,
+                800077
+              ],
+              [
+                800077,
+                17
+              ]
+            ]
+          ]
+        },
+        "94": {
+          "book_reference": "Book 3, Hadith 36",
+          "paths_student_to_teacher": [
+            [
+              [
+                30001,
+                30149
+              ],
+              [
+                30149,
+                20250
+              ],
+              [
+                20250,
+                11599
+              ],
+              [
+                11599,
+                11270
+              ],
+              [
+                11270,
+                19
+              ],
+              [
+                19,
+                1
+              ]
+            ]
+          ]
+        },
+        "188": {
+          "book_reference": "Book 4, Hadith 54",
+          "paths_student_to_teacher": []
+        },
+        "765": {
+          "book_reference": "Book 10, Hadith 159",
+          "paths_student_to_teacher": [
+            [
+              [
+                30001,
+                30355
+              ],
+              [
+                30355,
+                20001
+              ],
+              [
+                20001,
+                11013
+              ],
+              [
+                11013,
+                11058
+              ],
+              [
+                11058,
+                871
+              ],
+              [
+                871,
+                1
+              ]
+            ]
+          ]
+        },
+        "1067": {
+          "book_reference": "Book 17, Hadith 1",
+          "paths_student_to_teacher": [
+            [
+              [
+                30001,
+                30160
+              ],
+              [
+                30160,
+                20278
+              ],
+              [
+                20278,
+                20020
+              ],
+              [
+                20020,
+                11049
+              ],
+              [
+                11049,
+                11054
+              ],
+              [
+                11054,
+                16
+              ]
+            ]
+          ]
+        },
+        "7478": {
+          "book_reference": "Book 97, Hadith 104",
+          "paths_student_to_teacher": [
+            [
+              [
+                30001,
+                30351
+              ],
+              [
+                30351,
+                808062
+              ],
+              [
+                808062,
+                20024
+              ],
+              [
+                20024,
+                11013
+              ],
+              [
+                11013,
+                11004
+              ],
+              [
+                11004,
+                17
+              ]
+            ]
+          ]
+        },
+        "6770": {
+          "book_reference": "Book 85, Hadith 46",
+          "paths_student_to_teacher": [
+            [
+              [
+                30001,
+                30367
+              ],
+              [
+                30367,
+                20023
+              ],
+              [
+                20023,
+                11013
+              ],
+              [
+                11013,
+                10511
+              ],
+              [
+                10511,
+                53
+              ],
+              [
+                53,
+                807295
+              ]
+            ]
+          ]
+        },
+        "4648": {
+          "book_reference": "Book 65, Hadith 170",
+          "paths_student_to_teacher": [
+            [
+              [
+                30001,
+                805074
+              ],
+              [
+                805074,
+                30150
+              ],
+              [
+                30150,
+                20286
+              ],
+              [
+                20286,
+                20020
+              ],
+              [
+                20020,
+                805075
+              ]
+            ]
+          ]
+        },
+        "6122": {
+          "book_reference": "Book 78, Hadith 149",
+          "paths_student_to_teacher": [
+            [
+              [
+                30001,
+                20404
+              ],
+              [
+                20404,
+                20020
+              ],
+              [
+                20020,
+                11389
+              ],
+              [
+                11389,
+                18
+              ],
+              [
+                18,
+                1
+              ]
+            ]
+          ]
+        },
+        "5006": {
+          "book_reference": "Book 66, Hadith 28",
+          "paths_student_to_teacher": [
+            [
+              [
+                30001,
+                10950
+              ],
+              [
+                10950,
+                20031
+              ],
+              [
+                20031,
+                20020
+              ],
+              [
+                20020,
+                11159
+              ],
+              [
+                11159,
+                11420
+              ],
+              [
+                11420,
+                805511
+              ]
+            ]
+          ]
+        },
+        "4211": {
+          "book_reference": "Book 64, Hadith 251",
+          "paths_student_to_teacher": [
+            [
+              [
+                30001,
+                30235
+              ],
+              [
+                30235,
+                20185
+              ],
+              [
+                20185,
+                804539
+              ],
+              [
+                804539,
+                804540
+              ]
+            ],
+            [
+              [
+                30001,
+                30226
+              ],
+              [
+                30226,
+                20029
+              ],
+              [
+                20029,
+                20185
+              ],
+              [
+                20185,
+                804541
+              ],
+              [
+                804541,
+                804542
+              ]
+            ]
+          ]
+        },
+        "6722": {
+          "book_reference": "Book 84, Hadith 15",
+          "paths_student_to_teacher": [
+            [
+              [
+                30001,
+                20280
+              ],
+              [
+                20280,
+                20262
+              ],
+              [
+                20262,
+                11071
+              ],
+              [
+                11071,
+                11016
+              ],
+              [
+                11016,
+                955
+              ],
+              [
+                955,
+                1
+              ]
+            ]
+          ]
+        },
+        "742": {
+          "book_reference": "Book 10, Hadith 136",
+          "paths_student_to_teacher": [
+            [
+              [
+                30001,
+                30160
+              ],
+              [
+                30160,
+                20278
+              ],
+              [
+                20278,
+                20020
+              ],
+              [
+                20020,
+                11019
+              ],
+              [
+                11019,
+                19
+              ],
+              [
+                19,
+                1
+              ]
+            ]
+          ]
+        },
+        "2858": {
+          "book_reference": "Book 56, Hadith 74",
+          "paths_student_to_teacher": [
+            [
+              [
+                30001,
+                30330
+              ],
+              [
+                30330,
+                20428
+              ],
+              [
+                20428,
+                11013
+              ],
+              [
+                11013,
+                11011
+              ],
+              [
+                11011,
+                18
+              ],
+              [
+                18,
+                1
+              ]
+            ]
+          ]
+        }
+      }
+    },
+    "sources": {
+      "mhashim": {
+        "rows": 7008,
+        "distinct_ids": 7008,
+        "duplicate_id_groups": 0,
+        "nonempty_arabic": 7008,
+        "nonempty_english": 0,
+        "repeated_arabic_text_groups": 8,
+        "local_refs_with_any_exact_arabic_match": 1640,
+        "local_refs_with_any_exact_english_match": 0,
+        "sample": {
+          "1": {
+            "arabic_text_candidates": [
+              "1"
+            ],
+            "english_text_candidates": [],
+            "same_number_book_reference_agrees": false
+          },
+          "5": {
+            "arabic_text_candidates": [],
+            "english_text_candidates": [],
+            "same_number_book_reference_agrees": false
+          },
+          "15": {
+            "arabic_text_candidates": [],
+            "english_text_candidates": [],
+            "same_number_book_reference_agrees": false
+          },
+          "32": {
+            "arabic_text_candidates": [],
+            "english_text_candidates": [],
+            "same_number_book_reference_agrees": false
+          },
+          "74": {
+            "arabic_text_candidates": [],
+            "english_text_candidates": [],
+            "same_number_book_reference_agrees": false
+          },
+          "94": {
+            "arabic_text_candidates": [
+              "92"
+            ],
+            "english_text_candidates": [],
+            "same_number_book_reference_agrees": false
+          },
+          "188": {
+            "arabic_text_candidates": [],
+            "english_text_candidates": [],
+            "same_number_book_reference_agrees": false
+          },
+          "765": {
+            "arabic_text_candidates": [
+              "723"
+            ],
+            "english_text_candidates": [],
+            "same_number_book_reference_agrees": false
+          },
+          "1067": {
+            "arabic_text_candidates": [],
+            "english_text_candidates": [],
+            "same_number_book_reference_agrees": false
+          },
+          "7478": {
+            "arabic_text_candidates": [],
+            "english_text_candidates": [],
+            "same_number_book_reference_agrees": false
+          },
+          "6770": {
+            "arabic_text_candidates": [],
+            "english_text_candidates": [],
+            "same_number_book_reference_agrees": false
+          },
+          "4648": {
+            "arabic_text_candidates": [],
+            "english_text_candidates": [],
+            "same_number_book_reference_agrees": false
+          },
+          "6122": {
+            "arabic_text_candidates": [],
+            "english_text_candidates": [],
+            "same_number_book_reference_agrees": false
+          },
+          "5006": {
+            "arabic_text_candidates": [
+              "4622"
+            ],
+            "english_text_candidates": [],
+            "same_number_book_reference_agrees": false
+          },
+          "4211": {
+            "arabic_text_candidates": [],
+            "english_text_candidates": [],
+            "same_number_book_reference_agrees": false
+          },
+          "6722": {
+            "arabic_text_candidates": [],
+            "english_text_candidates": [],
+            "same_number_book_reference_agrees": false
+          },
+          "742": {
+            "arabic_text_candidates": [
+              "700"
+            ],
+            "english_text_candidates": [],
+            "same_number_book_reference_agrees": false
+          },
+          "2858": {
+            "arabic_text_candidates": [],
+            "english_text_candidates": [],
+            "same_number_book_reference_agrees": false
+          }
+        }
+      },
+      "mhashim_vocalized": {
+        "rows": 7008,
+        "distinct_ids": 7008,
+        "duplicate_id_groups": 0,
+        "nonempty_arabic": 7008,
+        "nonempty_english": 0,
+        "repeated_arabic_text_groups": 8,
+        "local_refs_with_any_exact_arabic_match": 1640,
+        "local_refs_with_any_exact_english_match": 0,
+        "sample": {
+          "1": {
+            "arabic_text_candidates": [
+              "1"
+            ],
+            "english_text_candidates": [],
+            "same_number_book_reference_agrees": false
+          },
+          "5": {
+            "arabic_text_candidates": [],
+            "english_text_candidates": [],
+            "same_number_book_reference_agrees": false
+          },
+          "15": {
+            "arabic_text_candidates": [],
+            "english_text_candidates": [],
+            "same_number_book_reference_agrees": false
+          },
+          "32": {
+            "arabic_text_candidates": [],
+            "english_text_candidates": [],
+            "same_number_book_reference_agrees": false
+          },
+          "74": {
+            "arabic_text_candidates": [],
+            "english_text_candidates": [],
+            "same_number_book_reference_agrees": false
+          },
+          "94": {
+            "arabic_text_candidates": [
+              "92"
+            ],
+            "english_text_candidates": [],
+            "same_number_book_reference_agrees": false
+          },
+          "188": {
+            "arabic_text_candidates": [],
+            "english_text_candidates": [],
+            "same_number_book_reference_agrees": false
+          },
+          "765": {
+            "arabic_text_candidates": [
+              "723"
+            ],
+            "english_text_candidates": [],
+            "same_number_book_reference_agrees": false
+          },
+          "1067": {
+            "arabic_text_candidates": [],
+            "english_text_candidates": [],
+            "same_number_book_reference_agrees": false
+          },
+          "7478": {
+            "arabic_text_candidates": [],
+            "english_text_candidates": [],
+            "same_number_book_reference_agrees": false
+          },
+          "6770": {
+            "arabic_text_candidates": [],
+            "english_text_candidates": [],
+            "same_number_book_reference_agrees": false
+          },
+          "4648": {
+            "arabic_text_candidates": [],
+            "english_text_candidates": [],
+            "same_number_book_reference_agrees": false
+          },
+          "6122": {
+            "arabic_text_candidates": [],
+            "english_text_candidates": [],
+            "same_number_book_reference_agrees": false
+          },
+          "5006": {
+            "arabic_text_candidates": [
+              "4622"
+            ],
+            "english_text_candidates": [],
+            "same_number_book_reference_agrees": false
+          },
+          "4211": {
+            "arabic_text_candidates": [],
+            "english_text_candidates": [],
+            "same_number_book_reference_agrees": false
+          },
+          "6722": {
+            "arabic_text_candidates": [],
+            "english_text_candidates": [],
+            "same_number_book_reference_agrees": false
+          },
+          "742": {
+            "arabic_text_candidates": [
+              "700"
+            ],
+            "english_text_candidates": [],
+            "same_number_book_reference_agrees": false
+          },
+          "2858": {
+            "arabic_text_candidates": [],
+            "english_text_candidates": [],
+            "same_number_book_reference_agrees": false
+          }
+        }
+      },
+      "jaguar": {
+        "rows": 7252,
+        "distinct_ids": 7252,
+        "duplicate_id_groups": 0,
+        "nonempty_arabic": 7252,
+        "nonempty_english": 7252,
+        "repeated_arabic_text_groups": 8,
+        "local_refs_with_any_exact_arabic_match": 7252,
+        "local_refs_with_any_exact_english_match": 7247,
+        "sample": {
+          "1": {
+            "arabic_text_candidates": [
+              "1"
+            ],
+            "english_text_candidates": [
+              "1"
+            ],
+            "same_number_book_reference_agrees": true
+          },
+          "5": {
+            "arabic_text_candidates": [
+              "5"
+            ],
+            "english_text_candidates": [
+              "5"
+            ],
+            "same_number_book_reference_agrees": true
+          },
+          "15": {
+            "arabic_text_candidates": [
+              "15"
+            ],
+            "english_text_candidates": [
+              "15"
+            ],
+            "same_number_book_reference_agrees": true
+          },
+          "32": {
+            "arabic_text_candidates": [
+              "32"
+            ],
+            "english_text_candidates": [
+              "32"
+            ],
+            "same_number_book_reference_agrees": true
+          },
+          "74": {
+            "arabic_text_candidates": [
+              "74"
+            ],
+            "english_text_candidates": [
+              "74"
+            ],
+            "same_number_book_reference_agrees": true
+          },
+          "94": {
+            "arabic_text_candidates": [
+              "94"
+            ],
+            "english_text_candidates": [
+              "94"
+            ],
+            "same_number_book_reference_agrees": true
+          },
+          "188": {
+            "arabic_text_candidates": [
+              "188"
+            ],
+            "english_text_candidates": [
+              "188"
+            ],
+            "same_number_book_reference_agrees": true
+          },
+          "765": {
+            "arabic_text_candidates": [
+              "765"
+            ],
+            "english_text_candidates": [
+              "765"
+            ],
+            "same_number_book_reference_agrees": true
+          },
+          "1067": {
+            "arabic_text_candidates": [
+              "1067"
+            ],
+            "english_text_candidates": [
+              "1067"
+            ],
+            "same_number_book_reference_agrees": true
+          },
+          "7478": {
+            "arabic_text_candidates": [
+              "7478"
+            ],
+            "english_text_candidates": [
+              "7478"
+            ],
+            "same_number_book_reference_agrees": true
+          },
+          "6770": {
+            "arabic_text_candidates": [
+              "6770"
+            ],
+            "english_text_candidates": [
+              "6770"
+            ],
+            "same_number_book_reference_agrees": true
+          },
+          "4648": {
+            "arabic_text_candidates": [
+              "4648"
+            ],
+            "english_text_candidates": [
+              "4648"
+            ],
+            "same_number_book_reference_agrees": true
+          },
+          "6122": {
+            "arabic_text_candidates": [
+              "6122"
+            ],
+            "english_text_candidates": [
+              "6122"
+            ],
+            "same_number_book_reference_agrees": true
+          },
+          "5006": {
+            "arabic_text_candidates": [
+              "5006"
+            ],
+            "english_text_candidates": [
+              "5006"
+            ],
+            "same_number_book_reference_agrees": true
+          },
+          "4211": {
+            "arabic_text_candidates": [
+              "4211"
+            ],
+            "english_text_candidates": [
+              "4211"
+            ],
+            "same_number_book_reference_agrees": true
+          },
+          "6722": {
+            "arabic_text_candidates": [
+              "6722"
+            ],
+            "english_text_candidates": [
+              "6722"
+            ],
+            "same_number_book_reference_agrees": true
+          },
+          "742": {
+            "arabic_text_candidates": [
+              "742"
+            ],
+            "english_text_candidates": [
+              "742"
+            ],
+            "same_number_book_reference_agrees": true
+          },
+          "2858": {
+            "arabic_text_candidates": [
+              "2858"
+            ],
+            "english_text_candidates": [
+              "2858"
+            ],
+            "same_number_book_reference_agrees": true
+          }
+        }
+      },
+      "fawaz_ar": {
+        "rows": 7589,
+        "distinct_ids": 7589,
+        "duplicate_id_groups": 0,
+        "nonempty_arabic": 7580,
+        "nonempty_english": 0,
+        "repeated_arabic_text_groups": 297,
+        "local_refs_with_any_exact_arabic_match": 7266,
+        "local_refs_with_any_exact_english_match": 0,
+        "sample": {
+          "1": {
+            "arabic_text_candidates": [
+              "1"
+            ],
+            "english_text_candidates": [],
+            "same_number_book_reference_agrees": true
+          },
+          "5": {
+            "arabic_text_candidates": [
+              "5"
+            ],
+            "english_text_candidates": [],
+            "same_number_book_reference_agrees": true
+          },
+          "15": {
+            "arabic_text_candidates": [
+              "15"
+            ],
+            "english_text_candidates": [],
+            "same_number_book_reference_agrees": true
+          },
+          "32": {
+            "arabic_text_candidates": [
+              "32"
+            ],
+            "english_text_candidates": [],
+            "same_number_book_reference_agrees": true
+          },
+          "74": {
+            "arabic_text_candidates": [
+              "74"
+            ],
+            "english_text_candidates": [],
+            "same_number_book_reference_agrees": true
+          },
+          "94": {
+            "arabic_text_candidates": [
+              "94"
+            ],
+            "english_text_candidates": [],
+            "same_number_book_reference_agrees": true
+          },
+          "188": {
+            "arabic_text_candidates": [
+              "188"
+            ],
+            "english_text_candidates": [],
+            "same_number_book_reference_agrees": true
+          },
+          "765": {
+            "arabic_text_candidates": [
+              "765"
+            ],
+            "english_text_candidates": [],
+            "same_number_book_reference_agrees": true
+          },
+          "1067": {
+            "arabic_text_candidates": [
+              "1067"
+            ],
+            "english_text_candidates": [],
+            "same_number_book_reference_agrees": true
+          },
+          "7478": {
+            "arabic_text_candidates": [
+              "7478"
+            ],
+            "english_text_candidates": [],
+            "same_number_book_reference_agrees": true
+          },
+          "6770": {
+            "arabic_text_candidates": [
+              "6770"
+            ],
+            "english_text_candidates": [],
+            "same_number_book_reference_agrees": true
+          },
+          "4648": {
+            "arabic_text_candidates": [
+              "4648"
+            ],
+            "english_text_candidates": [],
+            "same_number_book_reference_agrees": true
+          },
+          "6122": {
+            "arabic_text_candidates": [
+              "6122"
+            ],
+            "english_text_candidates": [],
+            "same_number_book_reference_agrees": true
+          },
+          "5006": {
+            "arabic_text_candidates": [
+              "5006"
+            ],
+            "english_text_candidates": [],
+            "same_number_book_reference_agrees": true
+          },
+          "4211": {
+            "arabic_text_candidates": [
+              "4211"
+            ],
+            "english_text_candidates": [],
+            "same_number_book_reference_agrees": true
+          },
+          "6722": {
+            "arabic_text_candidates": [
+              "6722"
+            ],
+            "english_text_candidates": [],
+            "same_number_book_reference_agrees": true
+          },
+          "742": {
+            "arabic_text_candidates": [
+              "742"
+            ],
+            "english_text_candidates": [],
+            "same_number_book_reference_agrees": true
+          },
+          "2858": {
+            "arabic_text_candidates": [
+              "2858"
+            ],
+            "english_text_candidates": [],
+            "same_number_book_reference_agrees": true
+          }
+        }
+      },
+      "fawaz_en": {
+        "rows": 7589,
+        "distinct_ids": 7589,
+        "duplicate_id_groups": 0,
+        "nonempty_arabic": 0,
+        "nonempty_english": 7580,
+        "repeated_arabic_text_groups": 0,
+        "local_refs_with_any_exact_arabic_match": 0,
+        "local_refs_with_any_exact_english_match": 5790,
+        "sample": {
+          "1": {
+            "arabic_text_candidates": [],
+            "english_text_candidates": [
+              "1"
+            ],
+            "same_number_book_reference_agrees": true
+          },
+          "5": {
+            "arabic_text_candidates": [],
+            "english_text_candidates": [
+              "5"
+            ],
+            "same_number_book_reference_agrees": true
+          },
+          "15": {
+            "arabic_text_candidates": [],
+            "english_text_candidates": [
+              "15"
+            ],
+            "same_number_book_reference_agrees": true
+          },
+          "32": {
+            "arabic_text_candidates": [],
+            "english_text_candidates": [],
+            "same_number_book_reference_agrees": true
+          },
+          "74": {
+            "arabic_text_candidates": [],
+            "english_text_candidates": [],
+            "same_number_book_reference_agrees": true
+          },
+          "94": {
+            "arabic_text_candidates": [],
+            "english_text_candidates": [],
+            "same_number_book_reference_agrees": true
+          },
+          "188": {
+            "arabic_text_candidates": [],
+            "english_text_candidates": [
+              "188"
+            ],
+            "same_number_book_reference_agrees": true
+          },
+          "765": {
+            "arabic_text_candidates": [],
+            "english_text_candidates": [
+              "765"
+            ],
+            "same_number_book_reference_agrees": true
+          },
+          "1067": {
+            "arabic_text_candidates": [],
+            "english_text_candidates": [],
+            "same_number_book_reference_agrees": true
+          },
+          "7478": {
+            "arabic_text_candidates": [],
+            "english_text_candidates": [],
+            "same_number_book_reference_agrees": true
+          },
+          "6770": {
+            "arabic_text_candidates": [],
+            "english_text_candidates": [],
+            "same_number_book_reference_agrees": true
+          },
+          "4648": {
+            "arabic_text_candidates": [],
+            "english_text_candidates": [],
+            "same_number_book_reference_agrees": true
+          },
+          "6122": {
+            "arabic_text_candidates": [],
+            "english_text_candidates": [
+              "6122"
+            ],
+            "same_number_book_reference_agrees": true
+          },
+          "5006": {
+            "arabic_text_candidates": [],
+            "english_text_candidates": [
+              "5006"
+            ],
+            "same_number_book_reference_agrees": true
+          },
+          "4211": {
+            "arabic_text_candidates": [],
+            "english_text_candidates": [],
+            "same_number_book_reference_agrees": true
+          },
+          "6722": {
+            "arabic_text_candidates": [],
+            "english_text_candidates": [
+              "6722"
+            ],
+            "same_number_book_reference_agrees": true
+          },
+          "742": {
+            "arabic_text_candidates": [],
+            "english_text_candidates": [
+              "742"
+            ],
+            "same_number_book_reference_agrees": true
+          },
+          "2858": {
+            "arabic_text_candidates": [],
+            "english_text_candidates": [
+              "2858"
+            ],
+            "same_number_book_reference_agrees": true
+          }
+        }
+      }
+    }
+  },
+  "knowledge_graph": {
+    "book": [
+      1,
+      "صحيح البخاري",
+      "الثالثة"
+    ],
+    "global_counts": {
+      "books": 425,
+      "hadiths": 715790,
+      "rawis": 49844,
+      "sanads": 577024,
+      "sanad_rawis": 4414211,
+      "aqwal": 127863,
+      "meaning_groups": 20745
+    },
+    "book_rows": 7031,
+    "duplicate_book_number_groups": 0,
+    "book_rows_with_sanads": 6536,
+    "book_rows_with_multiple_sanads": 1320,
+    "book_sanads": 8795,
+    "book_sanads_without_nodes": 0,
+    "bukhari_terminal_labels": [
+      [
+        "عبد الرحمن بن صخر",
+        1308
+      ],
+      [
+        "عائشة بنت عبد الله بن عثمان بن عامر بن عمرو بن كعب بن سعد بن تيم بن مرة",
+        1023
+      ],
+      [
+        "أنس بن مالك بن النضر بن ضمضم بن زيد بن حرام",
+        919
+      ],
+      [
+        "عبد الله بن عمر بن الخطاب بن نفيل",
+        860
+      ],
+      [
+        "عبد الله بن عباس بن عبد المطلب بن هاشم بن عبد مناف",
+        656
+      ],
+      [
+        "جابر بن عبد الله بن عمرو بن حرام بن ثعلبة بن كعب",
+        381
+      ],
+      [
+        "عبد الله بن مسعود بن حبيب بن شمخ بن مخزوم بن صاهلة بن كاهل بن الحارث بن تميم بن سعد بن هذيل بن مدركة بن إلياس بن مضر",
+        308
+      ],
+      [
+        "سعد بن مالك بن سنان بن عبيد بن ثعلبة بن عبيد بن خدرة بن عوف بن الحارث بن الخزرج",
+        261
+      ],
+      [
+        "عبد الله بن قيس بن سليم بن حضار بن حرب بن عامر بن عتر بن بكر بن عامر بن عذر بن وائل بن ناجية بن حماهر بن الأشعر",
+        172
+      ],
+      [
+        "براء بن عازب بن الحارث بن عدي بن مجدعة بن حارثة بن الحارث بن الخزرج بن عمرو بن مالك بن الأوس",
+        152
+      ],
+      [
+        "عمر بن الخطاب بن نفيل بن عبد العزى بن رياح بن عبد الله بن قرط بن رزاح بن عدي بن كعب",
+        149
+      ],
+      [
+        "موضع إرسال",
+        123
+      ]
+    ],
+    "exact_prophet_title_rows": [],
+    "live_example_record": [
+      17154,
+      "سنن أبي داود",
+      832,
+      4
+    ],
+    "orphan_chain_narrator_positions": 0,
+    "sample": {
+      "1": {
+        "1": {
+          "number_in_kg_edition": 1,
+          "normalized_full_text_exact": false,
+          "text_similarity": 0.9723,
+          "report_type": "مرفوع",
+          "meaning_group": 319,
+          "takhrij": 10770395,
+          "sanads": {
+            "1": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                4698,
+                "عبد الله بن الزبير بن عيسى بن عبيد الله بن أسامة بن عبد الله بن حميد بن زهير بن الحارث بن أسد بن عبد العزى"
+              ],
+              [
+                2,
+                3443,
+                "سفيان بن عيينة بن ميمون"
+              ],
+              [
+                3,
+                8272,
+                "يحيى بن سعيد بن قيس بن عمرو بن سهل بن ثعلبة بن الحارث بن زيد بن ثعلبة بن غنم بن مالك بن النجار"
+              ],
+              [
+                4,
+                6796,
+                "محمد بن إبراهيم بن الحارث بن خالد بن صخر بن عامر بن كعب بن سعد بن تيم بن مرة"
+              ],
+              [
+                5,
+                5719,
+                "علقمة بن وقاص بن محصن بن كلدة بن عبد ياليل"
+              ],
+              [
+                6,
+                5913,
+                "عمر بن الخطاب بن نفيل بن عبد العزى بن رياح بن عبد الله بن قرط بن رزاح بن عدي بن كعب"
+              ]
+            ]
+          }
+        },
+        "6223": {
+          "number_in_kg_edition": 6223,
+          "normalized_full_text_exact": false,
+          "text_similarity": 0.7443,
+          "report_type": "مرفوع",
+          "meaning_group": 319,
+          "takhrij": 10774529,
+          "sanads": {
+            "7729": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                6460,
+                "قتيبة بن سعيد بن جميل بن طريف بن عبد الله"
+              ],
+              [
+                2,
+                5280,
+                "عبد الوهاب بن عبد المجيد بن الصلت بن عبيد الله بن الحكم بن أبي العاص بن بشر بن عبيد"
+              ],
+              [
+                3,
+                8272,
+                "يحيى بن سعيد بن قيس بن عمرو بن سهل بن ثعلبة بن الحارث بن زيد بن ثعلبة بن غنم بن مالك بن النجار"
+              ],
+              [
+                4,
+                6796,
+                "محمد بن إبراهيم بن الحارث بن خالد بن صخر بن عامر بن كعب بن سعد بن تيم بن مرة"
+              ],
+              [
+                5,
+                5719,
+                "علقمة بن وقاص بن محصن بن كلدة بن عبد ياليل"
+              ],
+              [
+                6,
+                5913,
+                "عمر بن الخطاب بن نفيل بن عبد العزى بن رياح بن عبد الله بن قرط بن رزاح بن عدي بن كعب"
+              ]
+            ]
+          }
+        },
+        "2356": {
+          "number_in_kg_edition": 2356,
+          "normalized_full_text_exact": false,
+          "text_similarity": 0.7127,
+          "report_type": "مرفوع",
+          "meaning_group": 319,
+          "takhrij": 15002668,
+          "sanads": {
+            "2941": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                7248,
+                "محمد بن كثير"
+              ],
+              [
+                2,
+                3436,
+                "سفيان بن سعيد بن مسروق بن حمزة بن حبيب بن موهبة بن نصر بن ثعلبة بن ملكان بن ثور"
+              ],
+              [
+                3,
+                8272,
+                "يحيى بن سعيد بن قيس بن عمرو بن سهل بن ثعلبة بن الحارث بن زيد بن ثعلبة بن غنم بن مالك بن النجار"
+              ],
+              [
+                4,
+                6796,
+                "محمد بن إبراهيم بن الحارث بن خالد بن صخر بن عامر بن كعب بن سعد بن تيم بن مرة"
+              ],
+              [
+                5,
+                5719,
+                "علقمة بن وقاص بن محصن بن كلدة بن عبد ياليل"
+              ],
+              [
+                6,
+                5913,
+                "عمر بن الخطاب بن نفيل بن عبد العزى بن رياح بن عبد الله بن قرط بن رزاح بن عدي بن كعب"
+              ]
+            ]
+          }
+        }
+      },
+      "5": {
+        "4": {
+          "number_in_kg_edition": 4,
+          "normalized_full_text_exact": false,
+          "text_similarity": 0.8707,
+          "report_type": "مرفوع",
+          "meaning_group": 1833,
+          "takhrij": 58101333,
+          "sanads": {
+            "10": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                7721,
+                "موسى بن إسماعيل"
+              ],
+              [
+                2,
+                8153,
+                "وضاح بن عبد الله"
+              ],
+              [
+                3,
+                7710,
+                "موسى بن أبي عائشة"
+              ],
+              [
+                4,
+                3307,
+                "سعيد بن جبير بن هشام"
+              ],
+              [
+                5,
+                4883,
+                "عبد الله بن عباس بن عبد المطلب بن هاشم بن عبد مناف"
+              ]
+            ]
+          }
+        },
+        "6993": {
+          "number_in_kg_edition": 6993,
+          "normalized_full_text_exact": false,
+          "text_similarity": 0.7806,
+          "report_type": "مرفوع",
+          "meaning_group": 1833,
+          "takhrij": 58101609,
+          "sanads": {
+            "8750": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                6460,
+                "قتيبة بن سعيد بن جميل بن طريف بن عبد الله"
+              ],
+              [
+                2,
+                8153,
+                "وضاح بن عبد الله"
+              ],
+              [
+                3,
+                7710,
+                "موسى بن أبي عائشة"
+              ],
+              [
+                4,
+                3307,
+                "سعيد بن جبير بن هشام"
+              ],
+              [
+                5,
+                4883,
+                "عبد الله بن عباس بن عبد المطلب بن هاشم بن عبد مناف"
+              ]
+            ]
+          }
+        },
+        "4681": {
+          "number_in_kg_edition": 4681,
+          "normalized_full_text_exact": false,
+          "text_similarity": 0.5497,
+          "report_type": "مرفوع",
+          "meaning_group": 1833,
+          "takhrij": 56632423,
+          "sanads": {
+            "5730": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                6460,
+                "قتيبة بن سعيد بن جميل بن طريف بن عبد الله"
+              ],
+              [
+                2,
+                2122,
+                "جرير بن عبد الحميد بن جرير بن قرط بن هلال بن أقيس بن أبي أمية بن زحف بن النضر"
+              ],
+              [
+                3,
+                7710,
+                "موسى بن أبي عائشة"
+              ],
+              [
+                4,
+                3307,
+                "سعيد بن جبير بن هشام"
+              ],
+              [
+                5,
+                4883,
+                "عبد الله بن عباس بن عبد المطلب بن هاشم بن عبد مناف"
+              ]
+            ]
+          }
+        },
+        "5": {
+          "number_in_kg_edition": 5,
+          "normalized_full_text_exact": false,
+          "text_similarity": 0.2578,
+          "report_type": "مرفوع",
+          "meaning_group": 1427,
+          "takhrij": 1130588,
+          "sanads": {
+            "11": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                1888,
+                "بشر بن محمد"
+              ],
+              [
+                2,
+                4716,
+                "عبد الله بن المبارك بن واضح"
+              ],
+              [
+                3,
+                8621,
+                "يونس بن يزيد بن مشكان"
+              ],
+              [
+                4,
+                7272,
+                "محمد بن مسلم بن عبيد الله بن عبد الله بن شهاب بن عبد الله بن الحارث بن زهرة بن كلاب"
+              ],
+              [
+                5,
+                5409,
+                "عبيد الله بن عبد الله بن عتبة بن مسعود بن حبيب بن شمخ بن مخزوم بن صاهلة بن كاهل بن الحارث بن تميم بن سعد بن هذيل بن مدركة بن إلياس بن مضر"
+              ],
+              [
+                6,
+                4883,
+                "عبد الله بن عباس بن عبد المطلب بن هاشم بن عبد مناف"
+              ]
+            ],
+            "12": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                1888,
+                "بشر بن محمد"
+              ],
+              [
+                2,
+                4716,
+                "عبد الله بن المبارك بن واضح"
+              ],
+              [
+                3,
+                7633,
+                "معمر بن راشد"
+              ],
+              [
+                4,
+                7272,
+                "محمد بن مسلم بن عبيد الله بن عبد الله بن شهاب بن عبد الله بن الحارث بن زهرة بن كلاب"
+              ],
+              [
+                5,
+                5409,
+                "عبيد الله بن عبد الله بن عتبة بن مسعود بن حبيب بن شمخ بن مخزوم بن صاهلة بن كاهل بن الحارث بن تميم بن سعد بن هذيل بن مدركة بن إلياس بن مضر"
+              ],
+              [
+                6,
+                4883,
+                "عبد الله بن عباس بن عبد المطلب بن هاشم بن عبد مناف"
+              ]
+            ],
+            "13": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                4943,
+                "عبد الله بن عثمان بن جبلة بن ميمون"
+              ],
+              [
+                2,
+                4716,
+                "عبد الله بن المبارك بن واضح"
+              ],
+              [
+                3,
+                8621,
+                "يونس بن يزيد بن مشكان"
+              ],
+              [
+                4,
+                7272,
+                "محمد بن مسلم بن عبيد الله بن عبد الله بن شهاب بن عبد الله بن الحارث بن زهرة بن كلاب"
+              ],
+              [
+                5,
+                5409,
+                "عبيد الله بن عبد الله بن عتبة بن مسعود بن حبيب بن شمخ بن مخزوم بن صاهلة بن كاهل بن الحارث بن تميم بن سعد بن هذيل بن مدركة بن إلياس بن مضر"
+              ],
+              [
+                6,
+                4883,
+                "عبد الله بن عباس بن عبد المطلب بن هاشم بن عبد مناف"
+              ]
+            ]
+          }
+        }
+      },
+      "15": {
+        "14": {
+          "number_in_kg_edition": 14,
+          "normalized_full_text_exact": false,
+          "text_similarity": 0.9108,
+          "report_type": "مرفوع",
+          "meaning_group": 1581,
+          "takhrij": 39542043,
+          "sanads": {
+            "29": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                8514,
+                "يعقوب بن إبراهيم بن كثير بن زيد بن أفلح بن منصور بن مزاحم"
+              ],
+              [
+                2,
+                1003,
+                "إسماعيل بن إبراهيم بن مقسم"
+              ],
+              [
+                3,
+                4574,
+                "عبد العزيز بن صهيب"
+              ],
+              [
+                4,
+                720,
+                "أنس بن مالك بن النضر بن ضمضم بن زيد بن حرام"
+              ]
+            ],
+            "30": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                2,
+                "آدم بن عبد الرحمن بن محمد بن شعيب"
+              ],
+              [
+                2,
+                3795,
+                "شعبة بن الحجاج بن الورد"
+              ],
+              [
+                3,
+                6458,
+                "قتادة بن دعامة بن قتادة بن عزيز بن عمرو بن ربيعة"
+              ],
+              [
+                4,
+                720,
+                "أنس بن مالك بن النضر بن ضمضم بن زيد بن حرام"
+              ]
+            ]
+          }
+        },
+        "13": {
+          "number_in_kg_edition": 13,
+          "normalized_full_text_exact": false,
+          "text_similarity": 0.5343,
+          "report_type": "مرفوع",
+          "meaning_group": 1581,
+          "takhrij": 39541945,
+          "sanads": {
+            "28": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                1382,
+                "حكم بن نافع"
+              ],
+              [
+                2,
+                3801,
+                "شعيب بن دينار"
+              ],
+              [
+                3,
+                4798,
+                "عبد الله بن ذكوان"
+              ],
+              [
+                4,
+                4506,
+                "عبد الرحمن بن هرمز"
+              ],
+              [
+                5,
+                4396,
+                "عبد الرحمن بن صخر"
+              ]
+            ]
+          }
+        },
+        "1298": {
+          "number_in_kg_edition": 1298,
+          "normalized_full_text_exact": false,
+          "text_similarity": 0.5091,
+          "report_type": "مرفوع",
+          "meaning_group": 129,
+          "takhrij": 45794958,
+          "sanads": {
+            "1602": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                8514,
+                "يعقوب بن إبراهيم بن كثير بن زيد بن أفلح بن منصور بن مزاحم"
+              ],
+              [
+                2,
+                1003,
+                "إسماعيل بن إبراهيم بن مقسم"
+              ],
+              [
+                3,
+                4574,
+                "عبد العزيز بن صهيب"
+              ],
+              [
+                4,
+                720,
+                "أنس بن مالك بن النضر بن ضمضم بن زيد بن حرام"
+              ]
+            ]
+          }
+        },
+        "15": {
+          "number_in_kg_edition": 15,
+          "normalized_full_text_exact": false,
+          "text_similarity": 0.4183,
+          "report_type": "مرفوع",
+          "meaning_group": 1059,
+          "takhrij": 24523593,
+          "sanads": {
+            "31": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                6861,
+                "محمد بن المثنى بن عبيد بن قيس بن دينار"
+              ],
+              [
+                2,
+                5280,
+                "عبد الوهاب بن عبد المجيد بن الصلت بن عبيد الله بن الحكم بن أبي العاص بن بشر بن عبيد"
+              ],
+              [
+                3,
+                746,
+                "أيوب بن كيسان"
+              ],
+              [
+                4,
+                4820,
+                "عبد الله بن زيد بن عمرو بن ناتل بن مالك بن عبيد"
+              ],
+              [
+                5,
+                720,
+                "أنس بن مالك بن النضر بن ضمضم بن زيد بن حرام"
+              ]
+            ]
+          }
+        }
+      },
+      "32": {
+        "31": {
+          "number_in_kg_edition": 31,
+          "normalized_full_text_exact": false,
+          "text_similarity": 0.8355,
+          "report_type": "موقوف",
+          "meaning_group": null,
+          "takhrij": null,
+          "sanads": {}
+        },
+        "3197": {
+          "number_in_kg_edition": 3197,
+          "normalized_full_text_exact": false,
+          "text_similarity": 0.7012,
+          "report_type": "مرفوع",
+          "meaning_group": 1782,
+          "takhrij": 42483148,
+          "sanads": {
+            "4038": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                8053,
+                "هشام بن عبد الملك"
+              ],
+              [
+                2,
+                3795,
+                "شعبة بن الحجاج بن الورد"
+              ],
+              [
+                3,
+                3629,
+                "سليمان بن مهران"
+              ],
+              [
+                4,
+                902,
+                "إبراهيم بن يزيد بن قيس بن الأسود بن عمرو بن ربيعة"
+              ],
+              [
+                5,
+                5715,
+                "علقمة بن قيس بن عبد الله بن مالك بن علقمة بن سلامان بن كهيل بن بكر بن عوف بن النخع"
+              ],
+              [
+                6,
+                5079,
+                "عبد الله بن مسعود بن حبيب بن شمخ بن مخزوم بن صاهلة بن كاهل بن الحارث بن تميم بن سعد بن هذيل بن مدركة بن إلياس بن مضر"
+              ]
+            ]
+          }
+        },
+        "4288": {
+          "number_in_kg_edition": 4288,
+          "normalized_full_text_exact": false,
+          "text_similarity": 0.6667,
+          "report_type": "موقوف",
+          "meaning_group": null,
+          "takhrij": null,
+          "sanads": {}
+        },
+        "32": {
+          "number_in_kg_edition": 32,
+          "normalized_full_text_exact": false,
+          "text_similarity": 0.3619,
+          "report_type": "مرفوع",
+          "meaning_group": 309,
+          "takhrij": 12321212,
+          "sanads": {
+            "54": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                3583,
+                "سليمان بن داود"
+              ],
+              [
+                2,
+                1012,
+                "إسماعيل بن جعفر بن أبي كثير"
+              ],
+              [
+                3,
+                7859,
+                "نافع بن مالك بن عمرو بن الحارث"
+              ],
+              [
+                4,
+                6657,
+                "مالك بن عمرو بن الحارث"
+              ],
+              [
+                5,
+                4396,
+                "عبد الرحمن بن صخر"
+              ]
+            ]
+          }
+        }
+      },
+      "74": {
+        "73": {
+          "number_in_kg_edition": 73,
+          "normalized_full_text_exact": false,
+          "text_similarity": 0.974,
+          "report_type": "مرفوع",
+          "meaning_group": 975,
+          "takhrij": 22803490,
+          "sanads": {
+            "100": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                7234,
+                "محمد بن غرير بن الوليد بن إبراهيم بن عبد الرحمن بن عوف"
+              ],
+              [
+                2,
+                8513,
+                "يعقوب بن إبراهيم بن سعد بن إبراهيم بن عبد الرحمن بن عوف"
+              ],
+              [
+                3,
+                823,
+                "إبراهيم بن سعد بن إبراهيم بن عبد الرحمن بن عوف"
+              ],
+              [
+                4,
+                3891,
+                "صالح بن كيسان"
+              ],
+              [
+                5,
+                7272,
+                "محمد بن مسلم بن عبيد الله بن عبد الله بن شهاب بن عبد الله بن الحارث بن زهرة بن كلاب"
+              ],
+              [
+                6,
+                5409,
+                "عبيد الله بن عبد الله بن عتبة بن مسعود بن حبيب بن شمخ بن مخزوم بن صاهلة بن كاهل بن الحارث بن تميم بن سعد بن هذيل بن مدركة بن إلياس بن مضر"
+              ],
+              [
+                7,
+                4883,
+                "عبد الله بن عباس بن عبد المطلب بن هاشم بن عبد مناف"
+              ]
+            ]
+          }
+        },
+        "3171": {
+          "number_in_kg_edition": 3171,
+          "normalized_full_text_exact": false,
+          "text_similarity": 0.9272,
+          "report_type": "مرفوع",
+          "meaning_group": 975,
+          "takhrij": 22803016,
+          "sanads": {
+            "4005": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                6195,
+                "عمرو بن محمد بن بكير بن سابور"
+              ],
+              [
+                2,
+                8513,
+                "يعقوب بن إبراهيم بن سعد بن إبراهيم بن عبد الرحمن بن عوف"
+              ],
+              [
+                3,
+                823,
+                "إبراهيم بن سعد بن إبراهيم بن عبد الرحمن بن عوف"
+              ],
+              [
+                4,
+                3891,
+                "صالح بن كيسان"
+              ],
+              [
+                5,
+                7272,
+                "محمد بن مسلم بن عبيد الله بن عبد الله بن شهاب بن عبد الله بن الحارث بن زهرة بن كلاب"
+              ],
+              [
+                6,
+                5409,
+                "عبيد الله بن عبد الله بن عتبة بن مسعود بن حبيب بن شمخ بن مخزوم بن صاهلة بن كاهل بن الحارث بن تميم بن سعد بن هذيل بن مدركة بن إلياس بن مضر"
+              ],
+              [
+                7,
+                4883,
+                "عبد الله بن عباس بن عبد المطلب بن هاشم بن عبد مناف"
+              ],
+              [
+                8,
+                396,
+                "أبي بن كعب بن قيس بن عبيد بن زيد بن معاوية بن عمرو"
+              ]
+            ]
+          }
+        },
+        "6948": {
+          "number_in_kg_edition": 6948,
+          "normalized_full_text_exact": false,
+          "text_similarity": 0.8417,
+          "report_type": "مرفوع",
+          "meaning_group": 975,
+          "takhrij": 22707022,
+          "sanads": {
+            "8694": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                5060,
+                "عبد الله بن محمد بن عبد الله بن جعفر بن اليمان"
+              ],
+              [
+                2,
+                6067,
+                "عمرو بن أبي سلمة"
+              ],
+              [
+                3,
+                4457,
+                "عبد الرحمن بن عمرو بن يحمد"
+              ],
+              [
+                4,
+                7272,
+                "محمد بن مسلم بن عبيد الله بن عبد الله بن شهاب بن عبد الله بن الحارث بن زهرة بن كلاب"
+              ],
+              [
+                5,
+                5409,
+                "عبيد الله بن عبد الله بن عتبة بن مسعود بن حبيب بن شمخ بن مخزوم بن صاهلة بن كاهل بن الحارث بن تميم بن سعد بن هذيل بن مدركة بن إلياس بن مضر"
+              ],
+              [
+                6,
+                4883,
+                "عبد الله بن عباس بن عبد المطلب بن هاشم بن عبد مناف"
+              ],
+              [
+                7,
+                396,
+                "أبي بن كعب بن قيس بن عبيد بن زيد بن معاوية بن عمرو"
+              ]
+            ]
+          }
+        },
+        "74": {
+          "number_in_kg_edition": 74,
+          "normalized_full_text_exact": false,
+          "text_similarity": 0.1934,
+          "report_type": "مرفوع",
+          "meaning_group": 1350,
+          "takhrij": 19812277,
+          "sanads": {
+            "101": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                4978,
+                "عبد الله بن عمرو بن ميسرة"
+              ],
+              [
+                2,
+                5270,
+                "عبد الوارث بن سعيد بن ذكوان"
+              ],
+              [
+                3,
+                2682,
+                "خالد بن مهران"
+              ],
+              [
+                4,
+                5703,
+                "عكرمة"
+              ],
+              [
+                5,
+                4883,
+                "عبد الله بن عباس بن عبد المطلب بن هاشم بن عبد مناف"
+              ]
+            ]
+          }
+        }
+      },
+      "94": {
+        "93": {
+          "number_in_kg_edition": 93,
+          "normalized_full_text_exact": false,
+          "text_similarity": 0.9436,
+          "report_type": "مرفوع",
+          "meaning_group": 2676,
+          "takhrij": 3848130,
+          "sanads": {
+            "122": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                5290,
+                "عبدة بن عبد الله بن عبدة"
+              ],
+              [
+                2,
+                4548,
+                "عبد الصمد بن عبد الوارث بن سعيد بن ذكوان"
+              ],
+              [
+                3,
+                4717,
+                "عبد الله بن المثنى بن عبد الله بن أنس بن مالك"
+              ],
+              [
+                4,
+                2050,
+                "ثمامة بن عبد الله بن أنس بن مالك"
+              ],
+              [
+                5,
+                720,
+                "أنس بن مالك بن النضر بن ضمضم بن زيد بن حرام"
+              ]
+            ]
+          }
+        },
+        "5802": {
+          "number_in_kg_edition": 5802,
+          "normalized_full_text_exact": false,
+          "text_similarity": 0.8235,
+          "report_type": "مرفوع",
+          "meaning_group": 2676,
+          "takhrij": 3848130,
+          "sanads": {
+            "7154": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                970,
+                "إسحاق بن منصور بن بهرام"
+              ],
+              [
+                2,
+                4548,
+                "عبد الصمد بن عبد الوارث بن سعيد بن ذكوان"
+              ],
+              [
+                3,
+                4717,
+                "عبد الله بن المثنى بن عبد الله بن أنس بن مالك"
+              ],
+              [
+                4,
+                2050,
+                "ثمامة بن عبد الله بن أنس بن مالك"
+              ],
+              [
+                5,
+                720,
+                "أنس بن مالك بن النضر بن ضمضم بن زيد بن حرام"
+              ]
+            ]
+          }
+        },
+        "94": {
+          "number_in_kg_edition": 94,
+          "normalized_full_text_exact": false,
+          "text_similarity": 0.7128,
+          "report_type": "مرفوع",
+          "meaning_group": 2676,
+          "takhrij": 3022901,
+          "sanads": {
+            "123": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                5290,
+                "عبدة بن عبد الله بن عبدة"
+              ],
+              [
+                2,
+                4548,
+                "عبد الصمد بن عبد الوارث بن سعيد بن ذكوان"
+              ],
+              [
+                3,
+                4717,
+                "عبد الله بن المثنى بن عبد الله بن أنس بن مالك"
+              ],
+              [
+                4,
+                2050,
+                "ثمامة بن عبد الله بن أنس بن مالك"
+              ],
+              [
+                5,
+                720,
+                "أنس بن مالك بن النضر بن ضمضم بن زيد بن حرام"
+              ]
+            ]
+          }
+        }
+      },
+      "188": {
+        "183": {
+          "number_in_kg_edition": 183,
+          "normalized_full_text_exact": false,
+          "text_similarity": 0.5,
+          "report_type": "مرفوع",
+          "meaning_group": 5785,
+          "takhrij": 14208916,
+          "sanads": {
+            "230": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                2,
+                "آدم بن عبد الرحمن بن محمد بن شعيب"
+              ],
+              [
+                2,
+                3795,
+                "شعبة بن الحجاج بن الورد"
+              ],
+              [
+                3,
+                1372,
+                "حكم بن عتيبة"
+              ],
+              [
+                4,
+                8175,
+                "وهب بن عبد الله بن جنادة بن حجر بن رئاب بن حبيب بن سواءة"
+              ]
+            ]
+          }
+        },
+        "191": {
+          "number_in_kg_edition": 191,
+          "normalized_full_text_exact": false,
+          "text_similarity": 0.4828,
+          "report_type": "مرفوع",
+          "meaning_group": 5785,
+          "takhrij": 27380516,
+          "sanads": {
+            "240": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                6852,
+                "محمد بن العلاء بن كريب"
+              ],
+              [
+                2,
+                2484,
+                "حماد بن أسامة بن زيد"
+              ],
+              [
+                3,
+                1840,
+                "بريد بن عبد الله بن أبي بردة"
+              ],
+              [
+                4,
+                4108,
+                "عامر بن عبد الله بن قيس بن سليم بن حضار بن حرب بن عامر بن عتر بن بكر بن عامر بن عذر بن وائل بن ناجية بن حماهر بن الأشعر"
+              ],
+              [
+                5,
+                5021,
+                "عبد الله بن قيس بن سليم بن حضار بن حرب بن عامر بن عتر بن بكر بن عامر بن عذر بن وائل بن ناجية بن حماهر بن الأشعر"
+              ]
+            ]
+          }
+        },
+        "830": {
+          "number_in_kg_edition": 830,
+          "normalized_full_text_exact": false,
+          "text_similarity": 0.3985,
+          "report_type": "مرفوع",
+          "meaning_group": 1148,
+          "takhrij": 31408510,
+          "sanads": {
+            "1022": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                1548,
+                "فضل بن عمرو بن حماد بن زهير بن درهم"
+              ],
+              [
+                2,
+                3443,
+                "سفيان بن عيينة بن ميمون"
+              ],
+              [
+                3,
+                952,
+                "إسحاق بن عبد الله بن زيد بن سهل بن الأسود بن حرام بن عمرو"
+              ],
+              [
+                4,
+                720,
+                "أنس بن مالك بن النضر بن ضمضم بن زيد بن حرام"
+              ]
+            ]
+          }
+        },
+        "188": {
+          "number_in_kg_edition": 188,
+          "normalized_full_text_exact": false,
+          "text_similarity": 0.2934,
+          "report_type": "مرفوع",
+          "meaning_group": 1089,
+          "takhrij": 16279144,
+          "sanads": {
+            "237": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                5175,
+                "عبد الله بن يوسف"
+              ],
+              [
+                2,
+                6659,
+                "مالك بن أنس بن مالك بن أبي عامر بن عمرو"
+              ],
+              [
+                3,
+                7863,
+                "نافع"
+              ],
+              [
+                4,
+                4967,
+                "عبد الله بن عمر بن الخطاب بن نفيل"
+              ]
+            ]
+          }
+        }
+      },
+      "765": {
+        "726": {
+          "number_in_kg_edition": 726,
+          "normalized_full_text_exact": false,
+          "text_similarity": 0.9283,
+          "report_type": "مرفوع",
+          "meaning_group": 732,
+          "takhrij": 35376375,
+          "sanads": {
+            "892": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                5175,
+                "عبد الله بن يوسف"
+              ],
+              [
+                2,
+                6659,
+                "مالك بن أنس بن مالك بن أبي عامر بن عمرو"
+              ],
+              [
+                3,
+                7272,
+                "محمد بن مسلم بن عبيد الله بن عبد الله بن شهاب بن عبد الله بن الحارث بن زهرة بن كلاب"
+              ],
+              [
+                4,
+                6900,
+                "محمد بن جبير بن مطعم بن عدي بن نوفل بن عبد مناف"
+              ],
+              [
+                5,
+                2096,
+                "جبير بن مطعم بن عدي بن نوفل بن عبد مناف بن قصي"
+              ]
+            ]
+          }
+        },
+        "548": {
+          "number_in_kg_edition": 548,
+          "normalized_full_text_exact": false,
+          "text_similarity": 0.6458,
+          "report_type": "مرفوع",
+          "meaning_group": 117,
+          "takhrij": 48079444,
+          "sanads": {
+            "675": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                5175,
+                "عبد الله بن يوسف"
+              ],
+              [
+                2,
+                6659,
+                "مالك بن أنس بن مالك بن أبي عامر بن عمرو"
+              ],
+              [
+                3,
+                7272,
+                "محمد بن مسلم بن عبيد الله بن عبد الله بن شهاب بن عبد الله بن الحارث بن زهرة بن كلاب"
+              ],
+              [
+                4,
+                4903,
+                "عبد الله بن عبد الرحمن بن عوف بن عبد عوف بن الحارث بن زهرة"
+              ],
+              [
+                5,
+                4396,
+                "عبد الرحمن بن صخر"
+              ]
+            ]
+          }
+        },
+        "348": {
+          "number_in_kg_edition": 348,
+          "normalized_full_text_exact": false,
+          "text_similarity": 0.6421,
+          "report_type": "مرفوع",
+          "meaning_group": 30,
+          "takhrij": 11902354,
+          "sanads": {
+            "434": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                5175,
+                "عبد الله بن يوسف"
+              ],
+              [
+                2,
+                6659,
+                "مالك بن أنس بن مالك بن أبي عامر بن عمرو"
+              ],
+              [
+                3,
+                7272,
+                "محمد بن مسلم بن عبيد الله بن عبد الله بن شهاب بن عبد الله بن الحارث بن زهرة بن كلاب"
+              ],
+              [
+                4,
+                3299,
+                "سعيد بن المسيب بن حزن بن أبي وهب بن عمرو بن عائذ بن عمران بن مخزوم بن يقظة"
+              ],
+              [
+                5,
+                4396,
+                "عبد الرحمن بن صخر"
+              ]
+            ]
+          }
+        },
+        "765": {
+          "number_in_kg_edition": 765,
+          "normalized_full_text_exact": false,
+          "text_similarity": 0.2444,
+          "report_type": "مرفوع",
+          "meaning_group": 501,
+          "takhrij": 18962996,
+          "sanads": {
+            "933": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                1382,
+                "حكم بن نافع"
+              ],
+              [
+                2,
+                3801,
+                "شعيب بن دينار"
+              ],
+              [
+                3,
+                7272,
+                "محمد بن مسلم بن عبيد الله بن عبد الله بن شهاب بن عبد الله بن الحارث بن زهرة بن كلاب"
+              ],
+              [
+                4,
+                118,
+                "أبو بكر بن عبد الرحمن بن الحارث بن هشام بن المغيرة بن عبد الله بن عمر بن مخزوم"
+              ],
+              [
+                5,
+                4396,
+                "عبد الرحمن بن صخر"
+              ]
+            ],
+            "934": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                1382,
+                "حكم بن نافع"
+              ],
+              [
+                2,
+                3801,
+                "شعيب بن دينار"
+              ],
+              [
+                3,
+                7272,
+                "محمد بن مسلم بن عبيد الله بن عبد الله بن شهاب بن عبد الله بن الحارث بن زهرة بن كلاب"
+              ],
+              [
+                4,
+                4903,
+                "عبد الله بن عبد الرحمن بن عوف بن عبد عوف بن الحارث بن زهرة"
+              ],
+              [
+                5,
+                4396,
+                "عبد الرحمن بن صخر"
+              ]
+            ]
+          }
+        }
+      },
+      "1067": {
+        "1010": {
+          "number_in_kg_edition": 1010,
+          "normalized_full_text_exact": false,
+          "text_similarity": 0.9576,
+          "report_type": "مرفوع",
+          "meaning_group": 742,
+          "takhrij": 35334145,
+          "sanads": {
+            "1238": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                6879,
+                "محمد بن بشار بن عثمان بن داود بن كيسان"
+              ],
+              [
+                2,
+                6904,
+                "محمد بن جعفر"
+              ],
+              [
+                3,
+                3795,
+                "شعبة بن الحجاج بن الورد"
+              ],
+              [
+                4,
+                6155,
+                "عمرو بن عبد الله بن عبيد"
+              ],
+              [
+                5,
+                1146,
+                "أسود بن يزيد بن قيس بن عبد الله بن علقمة بن سلامان بن كهيل بن بكر بن عوف بن النخع"
+              ],
+              [
+                6,
+                5079,
+                "عبد الله بن مسعود بن حبيب بن شمخ بن مخزوم بن صاهلة بن كاهل بن الحارث بن تميم بن سعد بن هذيل بن مدركة بن إلياس بن مضر"
+              ]
+            ]
+          }
+        },
+        "3701": {
+          "number_in_kg_edition": 3701,
+          "normalized_full_text_exact": false,
+          "text_similarity": 0.752,
+          "report_type": "مرفوع",
+          "meaning_group": 742,
+          "takhrij": 35390017,
+          "sanads": {
+            "4595": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                4943,
+                "عبد الله بن عثمان بن جبلة بن ميمون"
+              ],
+              [
+                2,
+                5503,
+                "عثمان بن جبلة بن أبي رواد"
+              ],
+              [
+                3,
+                3795,
+                "شعبة بن الحجاج بن الورد"
+              ],
+              [
+                4,
+                6155,
+                "عمرو بن عبد الله بن عبيد"
+              ],
+              [
+                5,
+                1146,
+                "أسود بن يزيد بن قيس بن عبد الله بن علقمة بن سلامان بن كهيل بن بكر بن عوف بن النخع"
+              ],
+              [
+                6,
+                5079,
+                "عبد الله بن مسعود بن حبيب بن شمخ بن مخزوم بن صاهلة بن كاهل بن الحارث بن تميم بن سعد بن هذيل بن مدركة بن إلياس بن مضر"
+              ]
+            ]
+          }
+        },
+        "1013": {
+          "number_in_kg_edition": 1013,
+          "normalized_full_text_exact": false,
+          "text_similarity": 0.7398,
+          "report_type": "مرفوع",
+          "meaning_group": 742,
+          "takhrij": 35359905,
+          "sanads": {
+            "1242": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                2438,
+                "حفص بن عمر بن الحارث بن سخبرة"
+              ],
+              [
+                2,
+                3795,
+                "شعبة بن الحجاج بن الورد"
+              ],
+              [
+                3,
+                6155,
+                "عمرو بن عبد الله بن عبيد"
+              ],
+              [
+                4,
+                1146,
+                "أسود بن يزيد بن قيس بن عبد الله بن علقمة بن سلامان بن كهيل بن بكر بن عوف بن النخع"
+              ],
+              [
+                5,
+                5079,
+                "عبد الله بن مسعود بن حبيب بن شمخ بن مخزوم بن صاهلة بن كاهل بن الحارث بن تميم بن سعد بن هذيل بن مدركة بن إلياس بن مضر"
+              ]
+            ]
+          }
+        },
+        "1067": {
+          "number_in_kg_edition": 1067,
+          "normalized_full_text_exact": false,
+          "text_similarity": 0.1869,
+          "report_type": "مرفوع",
+          "meaning_group": 1260,
+          "takhrij": 26485089,
+          "sanads": {
+            "1315": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                5175,
+                "عبد الله بن يوسف"
+              ],
+              [
+                2,
+                6659,
+                "مالك بن أنس بن مالك بن أبي عامر بن عمرو"
+              ],
+              [
+                3,
+                7272,
+                "محمد بن مسلم بن عبيد الله بن عبد الله بن شهاب بن عبد الله بن الحارث بن زهرة بن كلاب"
+              ],
+              [
+                4,
+                5594,
+                "عروة بن الزبير بن العوام بن خويلد بن أسد بن عبد العزى بن قصي بن كلاب"
+              ],
+              [
+                5,
+                4049,
+                "عائشة بنت عبد الله بن عثمان بن عامر بن عمرو بن كعب بن سعد بن تيم بن مرة"
+              ]
+            ]
+          }
+        }
+      },
+      "7478": {
+        "6948": {
+          "number_in_kg_edition": 6948,
+          "normalized_full_text_exact": false,
+          "text_similarity": 0.9723,
+          "report_type": "مرفوع",
+          "meaning_group": 975,
+          "takhrij": 22707022,
+          "sanads": {
+            "8694": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                5060,
+                "عبد الله بن محمد بن عبد الله بن جعفر بن اليمان"
+              ],
+              [
+                2,
+                6067,
+                "عمرو بن أبي سلمة"
+              ],
+              [
+                3,
+                4457,
+                "عبد الرحمن بن عمرو بن يحمد"
+              ],
+              [
+                4,
+                7272,
+                "محمد بن مسلم بن عبيد الله بن عبد الله بن شهاب بن عبد الله بن الحارث بن زهرة بن كلاب"
+              ],
+              [
+                5,
+                5409,
+                "عبيد الله بن عبد الله بن عتبة بن مسعود بن حبيب بن شمخ بن مخزوم بن صاهلة بن كاهل بن الحارث بن تميم بن سعد بن هذيل بن مدركة بن إلياس بن مضر"
+              ],
+              [
+                6,
+                4883,
+                "عبد الله بن عباس بن عبد المطلب بن هاشم بن عبد مناف"
+              ],
+              [
+                7,
+                396,
+                "أبي بن كعب بن قيس بن عبيد بن زيد بن معاوية بن عمرو"
+              ]
+            ]
+          }
+        },
+        "3171": {
+          "number_in_kg_edition": 3171,
+          "normalized_full_text_exact": false,
+          "text_similarity": 0.8501,
+          "report_type": "مرفوع",
+          "meaning_group": 975,
+          "takhrij": 22803016,
+          "sanads": {
+            "4005": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                6195,
+                "عمرو بن محمد بن بكير بن سابور"
+              ],
+              [
+                2,
+                8513,
+                "يعقوب بن إبراهيم بن سعد بن إبراهيم بن عبد الرحمن بن عوف"
+              ],
+              [
+                3,
+                823,
+                "إبراهيم بن سعد بن إبراهيم بن عبد الرحمن بن عوف"
+              ],
+              [
+                4,
+                3891,
+                "صالح بن كيسان"
+              ],
+              [
+                5,
+                7272,
+                "محمد بن مسلم بن عبيد الله بن عبد الله بن شهاب بن عبد الله بن الحارث بن زهرة بن كلاب"
+              ],
+              [
+                6,
+                5409,
+                "عبيد الله بن عبد الله بن عتبة بن مسعود بن حبيب بن شمخ بن مخزوم بن صاهلة بن كاهل بن الحارث بن تميم بن سعد بن هذيل بن مدركة بن إلياس بن مضر"
+              ],
+              [
+                7,
+                4883,
+                "عبد الله بن عباس بن عبد المطلب بن هاشم بن عبد مناف"
+              ],
+              [
+                8,
+                396,
+                "أبي بن كعب بن قيس بن عبيد بن زيد بن معاوية بن عمرو"
+              ]
+            ]
+          }
+        },
+        "77": {
+          "number_in_kg_edition": 77,
+          "normalized_full_text_exact": false,
+          "text_similarity": 0.8488,
+          "report_type": "مرفوع",
+          "meaning_group": 975,
+          "takhrij": 22800703,
+          "sanads": {
+            "104": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                2637,
+                "خالد بن خلي"
+              ],
+              [
+                2,
+                6916,
+                "محمد بن حرب"
+              ],
+              [
+                3,
+                4457,
+                "عبد الرحمن بن عمرو بن يحمد"
+              ],
+              [
+                4,
+                7272,
+                "محمد بن مسلم بن عبيد الله بن عبد الله بن شهاب بن عبد الله بن الحارث بن زهرة بن كلاب"
+              ],
+              [
+                5,
+                5409,
+                "عبيد الله بن عبد الله بن عتبة بن مسعود بن حبيب بن شمخ بن مخزوم بن صاهلة بن كاهل بن الحارث بن تميم بن سعد بن هذيل بن مدركة بن إلياس بن مضر"
+              ],
+              [
+                6,
+                4883,
+                "عبد الله بن عباس بن عبد المطلب بن هاشم بن عبد مناف"
+              ]
+            ]
+          }
+        }
+      },
+      "6770": {
+        "6300": {
+          "number_in_kg_edition": 6300,
+          "normalized_full_text_exact": false,
+          "text_similarity": 0.9455,
+          "report_type": "مرفوع",
+          "meaning_group": 1278,
+          "takhrij": 54112689,
+          "sanads": {
+            "7832": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                6460,
+                "قتيبة بن سعيد بن جميل بن طريف بن عبد الله"
+              ],
+              [
+                2,
+                6641,
+                "ليث بن سعد بن عبد الرحمن"
+              ],
+              [
+                3,
+                7272,
+                "محمد بن مسلم بن عبيد الله بن عبد الله بن شهاب بن عبد الله بن الحارث بن زهرة بن كلاب"
+              ],
+              [
+                4,
+                5594,
+                "عروة بن الزبير بن العوام بن خويلد بن أسد بن عبد العزى بن قصي بن كلاب"
+              ],
+              [
+                5,
+                4049,
+                "عائشة بنت عبد الله بن عثمان بن عامر بن عمرو بن كعب بن سعد بن تيم بن مرة"
+              ]
+            ]
+          }
+        },
+        "3313": {
+          "number_in_kg_edition": 3313,
+          "normalized_full_text_exact": false,
+          "text_similarity": 0.6894,
+          "report_type": "مرفوع",
+          "meaning_group": 1278,
+          "takhrij": 22249015,
+          "sanads": {
+            "4178": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                8342,
+                "يحيى بن موسى بن عبد ربه بن سالم"
+              ],
+              [
+                2,
+                4533,
+                "عبد الرزاق بن همام بن نافع"
+              ],
+              [
+                3,
+                5223,
+                "عبد الملك بن عبد العزيز بن جريج"
+              ],
+              [
+                4,
+                7272,
+                "محمد بن مسلم بن عبيد الله بن عبد الله بن شهاب بن عبد الله بن الحارث بن زهرة بن كلاب"
+              ],
+              [
+                5,
+                5594,
+                "عروة بن الزبير بن العوام بن خويلد بن أسد بن عبد العزى بن قصي بن كلاب"
+              ],
+              [
+                6,
+                4049,
+                "عائشة بنت عبد الله بن عثمان بن عامر بن عمرو بن كعب بن سعد بن تيم بن مرة"
+              ]
+            ]
+          }
+        },
+        "6301": {
+          "number_in_kg_edition": 6301,
+          "normalized_full_text_exact": false,
+          "text_similarity": 0.6119,
+          "report_type": "مرفوع",
+          "meaning_group": 1278,
+          "takhrij": 54112689,
+          "sanads": {
+            "7833": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                6460,
+                "قتيبة بن سعيد بن جميل بن طريف بن عبد الله"
+              ],
+              [
+                2,
+                3443,
+                "سفيان بن عيينة بن ميمون"
+              ],
+              [
+                3,
+                7272,
+                "محمد بن مسلم بن عبيد الله بن عبد الله بن شهاب بن عبد الله بن الحارث بن زهرة بن كلاب"
+              ],
+              [
+                4,
+                5594,
+                "عروة بن الزبير بن العوام بن خويلد بن أسد بن عبد العزى بن قصي بن كلاب"
+              ],
+              [
+                5,
+                4049,
+                "عائشة بنت عبد الله بن عثمان بن عامر بن عمرو بن كعب بن سعد بن تيم بن مرة"
+              ]
+            ]
+          }
+        },
+        "6770": {
+          "number_in_kg_edition": 6770,
+          "normalized_full_text_exact": false,
+          "text_similarity": 0.2111,
+          "report_type": "مرفوع",
+          "meaning_group": 363,
+          "takhrij": 23829550,
+          "sanads": {
+            "8441": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                5085,
+                "عبد الله بن مسلمة بن قعنب"
+              ],
+              [
+                2,
+                6659,
+                "مالك بن أنس بن مالك بن أبي عامر بن عمرو"
+              ],
+              [
+                3,
+                8055,
+                "هشام بن عروة بن الزبير بن العوام بن خويلد بن أسد بن عبد العزى بن قصي بن كلاب"
+              ],
+              [
+                4,
+                6386,
+                "فاطمة بنت المنذر بن الزبير بن العوام"
+              ],
+              [
+                5,
+                553,
+                "أسماء بنت أبي بكر الصديق"
+              ]
+            ]
+          }
+        }
+      },
+      "4648": {
+        "4306": {
+          "number_in_kg_edition": 4306,
+          "normalized_full_text_exact": false,
+          "text_similarity": 0.9528,
+          "report_type": "مرفوع",
+          "meaning_group": 6813,
+          "takhrij": 18908966,
+          "sanads": {
+            "5301": [
+              [
+                0,
+                425,
+                "أحمد بن النضر بن عبد الوهاب"
+              ],
+              [
+                1,
+                5435,
+                "عبيد الله بن معاذ بن معاذ بن نصر بن حسان"
+              ],
+              [
+                2,
+                7561,
+                "معاذ بن معاذ بن نصر بن حسان بن الحر بن مالك بن الخشخاش"
+              ],
+              [
+                3,
+                3795,
+                "شعبة بن الحجاج بن الورد"
+              ],
+              [
+                4,
+                4233,
+                "عبد الحميد بن دينار"
+              ],
+              [
+                5,
+                720,
+                "أنس بن مالك بن النضر بن ضمضم بن زيد بن حرام"
+              ]
+            ]
+          }
+        },
+        "4307": {
+          "number_in_kg_edition": 4307,
+          "normalized_full_text_exact": false,
+          "text_similarity": 0.9154,
+          "report_type": "مرفوع",
+          "meaning_group": 6813,
+          "takhrij": 18908183,
+          "sanads": {
+            "5302": [
+              [
+                0,
+                6866,
+                "محمد بن النضر بن عبد الوهاب"
+              ],
+              [
+                1,
+                5435,
+                "عبيد الله بن معاذ بن معاذ بن نصر بن حسان"
+              ],
+              [
+                2,
+                7561,
+                "معاذ بن معاذ بن نصر بن حسان بن الحر بن مالك بن الخشخاش"
+              ],
+              [
+                3,
+                3795,
+                "شعبة بن الحجاج بن الورد"
+              ],
+              [
+                4,
+                4233,
+                "عبد الحميد بن دينار"
+              ],
+              [
+                5,
+                720,
+                "أنس بن مالك بن النضر بن ضمضم بن زيد بن حرام"
+              ]
+            ]
+          }
+        },
+        "150": {
+          "number_in_kg_edition": 150,
+          "normalized_full_text_exact": false,
+          "text_similarity": 0.4225,
+          "report_type": "مرفوع",
+          "meaning_group": 5389,
+          "takhrij": 57003629,
+          "sanads": {
+            "189": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                30001,
+                "موضع تعليق"
+              ],
+              [
+                2,
+                1141,
+                "أسود بن عامر"
+              ],
+              [
+                3,
+                3795,
+                "شعبة بن الحجاج بن الورد"
+              ],
+              [
+                4,
+                5628,
+                "عطاء بن منيع"
+              ],
+              [
+                5,
+                720,
+                "أنس بن مالك بن النضر بن ضمضم بن زيد بن حرام"
+              ]
+            ],
+            "190": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                30001,
+                "موضع تعليق"
+              ],
+              [
+                2,
+                1716,
+                "نضر بن شميل بن خرشة بن يزيد بن كلثوم بن عنزة بن زهير بن عمرو بن حجر بن خزاعى"
+              ],
+              [
+                3,
+                3795,
+                "شعبة بن الحجاج بن الورد"
+              ],
+              [
+                4,
+                5628,
+                "عطاء بن منيع"
+              ],
+              [
+                5,
+                720,
+                "أنس بن مالك بن النضر بن ضمضم بن زيد بن حرام"
+              ]
+            ],
+            "191": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                6879,
+                "محمد بن بشار بن عثمان بن داود بن كيسان"
+              ],
+              [
+                2,
+                6904,
+                "محمد بن جعفر"
+              ],
+              [
+                3,
+                3795,
+                "شعبة بن الحجاج بن الورد"
+              ],
+              [
+                4,
+                5628,
+                "عطاء بن منيع"
+              ],
+              [
+                5,
+                720,
+                "أنس بن مالك بن النضر بن ضمضم بن زيد بن حرام"
+              ]
+            ]
+          }
+        },
+        "4648": {
+          "number_in_kg_edition": 4648,
+          "normalized_full_text_exact": false,
+          "text_similarity": 0.1359,
+          "report_type": "مرفوع",
+          "meaning_group": 988,
+          "takhrij": 45479821,
+          "sanads": {
+            "5685": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                30001,
+                "موضع تعليق"
+              ],
+              [
+                2,
+                4978,
+                "عبد الله بن عمرو بن ميسرة"
+              ],
+              [
+                3,
+                5270,
+                "عبد الوارث بن سعيد بن ذكوان"
+              ],
+              [
+                4,
+                8042,
+                "هشام بن حسان"
+              ],
+              [
+                5,
+                7016,
+                "محمد بن سيرين"
+              ],
+              [
+                6,
+                7599,
+                "معبد بن سيرين"
+              ],
+              [
+                7,
+                3260,
+                "سعد بن مالك بن سنان بن عبيد بن ثعلبة بن عبيد بن خدرة بن عوف بن الحارث بن الخزرج"
+              ]
+            ],
+            "5686": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                6861,
+                "محمد بن المثنى بن عبيد بن قيس بن دينار"
+              ],
+              [
+                2,
+                8169,
+                "وهب بن جرير بن حازم بن زيد بن عبد الله بن شجاع"
+              ],
+              [
+                3,
+                8042,
+                "هشام بن حسان"
+              ],
+              [
+                4,
+                7016,
+                "محمد بن سيرين"
+              ],
+              [
+                5,
+                7599,
+                "معبد بن سيرين"
+              ],
+              [
+                6,
+                3260,
+                "سعد بن مالك بن سنان بن عبيد بن ثعلبة بن عبيد بن خدرة بن عوف بن الحارث بن الخزرج"
+              ]
+            ]
+          }
+        }
+      },
+      "6122": {
+        "5684": {
+          "number_in_kg_edition": 5684,
+          "normalized_full_text_exact": false,
+          "text_similarity": 0.9705,
+          "report_type": "مرفوع",
+          "meaning_group": 893,
+          "takhrij": 47057318,
+          "sanads": {
+            "7009": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                2,
+                "آدم بن عبد الرحمن بن محمد بن شعيب"
+              ],
+              [
+                2,
+                3795,
+                "شعبة بن الحجاج بن الورد"
+              ],
+              [
+                3,
+                2701,
+                "خبيب بن عبد الرحمن بن خبيب بن يساف"
+              ],
+              [
+                4,
+                2428,
+                "حفص بن عاصم بن عمر بن الخطاب"
+              ],
+              [
+                5,
+                4967,
+                "عبد الله بن عمر بن الخطاب بن نفيل"
+              ]
+            ],
+            "7010": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                2,
+                "آدم بن عبد الرحمن بن محمد بن شعيب"
+              ],
+              [
+                2,
+                3795,
+                "شعبة بن الحجاج بن الورد"
+              ],
+              [
+                3,
+                6725,
+                "محارب بن دثار بن كردوس بن قرواش بن جعونة بن سلمة"
+              ],
+              [
+                4,
+                4967,
+                "عبد الله بن عمر بن الخطاب بن نفيل"
+              ]
+            ]
+          }
+        },
+        "1752": {
+          "number_in_kg_edition": 1752,
+          "normalized_full_text_exact": false,
+          "text_similarity": 0.3523,
+          "report_type": "مرفوع",
+          "meaning_group": 2249,
+          "takhrij": 15203788,
+          "sanads": {
+            "2186": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                808,
+                "إبراهيم بن المنذر بن عبد الله بن المنذر بن المغيرة بن عبد الله بن خالد بن حزام"
+              ],
+              [
+                2,
+                718,
+                "أنس بن عياض بن ضمرة"
+              ],
+              [
+                3,
+                5421,
+                "عبيد الله بن عمر بن حفص بن عاصم بن عمر بن الخطاب"
+              ],
+              [
+                4,
+                2701,
+                "خبيب بن عبد الرحمن بن خبيب بن يساف"
+              ],
+              [
+                5,
+                2428,
+                "حفص بن عاصم بن عمر بن الخطاب"
+              ],
+              [
+                6,
+                4396,
+                "عبد الرحمن بن صخر"
+              ]
+            ]
+          }
+        },
+        "1127": {
+          "number_in_kg_edition": 1127,
+          "normalized_full_text_exact": false,
+          "text_similarity": 0.3514,
+          "report_type": "مرفوع",
+          "meaning_group": 334,
+          "takhrij": 44676194,
+          "sanads": {
+            "1393": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                7426,
+                "مسدد بن مسرهد بن مسربل بن مستورد"
+              ],
+              [
+                2,
+                8271,
+                "يحيى بن سعيد بن فروخ"
+              ],
+              [
+                3,
+                5421,
+                "عبيد الله بن عمر بن حفص بن عاصم بن عمر بن الخطاب"
+              ],
+              [
+                4,
+                2701,
+                "خبيب بن عبد الرحمن بن خبيب بن يساف"
+              ],
+              [
+                5,
+                2428,
+                "حفص بن عاصم بن عمر بن الخطاب"
+              ],
+              [
+                6,
+                4396,
+                "عبد الرحمن بن صخر"
+              ]
+            ]
+          }
+        },
+        "6122": {
+          "number_in_kg_edition": 6122,
+          "normalized_full_text_exact": false,
+          "text_similarity": 0.3091,
+          "report_type": "مرفوع",
+          "meaning_group": 174,
+          "takhrij": 35214529,
+          "sanads": {
+            "7588": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                3391,
+                "سعيد بن كثير بن عفير بن مسلم بن يزيد بن الأسود"
+              ],
+              [
+                2,
+                5147,
+                "عبد الله بن وهب بن مسلم"
+              ],
+              [
+                3,
+                8621,
+                "يونس بن يزيد بن مشكان"
+              ],
+              [
+                4,
+                7272,
+                "محمد بن مسلم بن عبيد الله بن عبد الله بن شهاب بن عبد الله بن الحارث بن زهرة بن كلاب"
+              ],
+              [
+                5,
+                720,
+                "أنس بن مالك بن النضر بن ضمضم بن زيد بن حرام"
+              ]
+            ]
+          }
+        }
+      },
+      "5006": {
+        "4647": {
+          "number_in_kg_edition": 4647,
+          "normalized_full_text_exact": false,
+          "text_similarity": 0.9577,
+          "report_type": "مرفوع",
+          "meaning_group": 779,
+          "takhrij": 15794126,
+          "sanads": {
+            "5684": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                5792,
+                "علي بن عبد الله بن جعفر بن نجيح"
+              ],
+              [
+                2,
+                8271,
+                "يحيى بن سعيد بن فروخ"
+              ],
+              [
+                3,
+                3795,
+                "شعبة بن الحجاج بن الورد"
+              ],
+              [
+                4,
+                2701,
+                "خبيب بن عبد الرحمن بن خبيب بن يساف"
+              ],
+              [
+                5,
+                2428,
+                "حفص بن عاصم بن عمر بن الخطاب"
+              ],
+              [
+                6,
+                201,
+                "رافع بن أوس بن المعلى بن لوذان بن حارثة بن عدى بن زيد بن ثعلبة بن زيد مناة بن حبيب بن عبد حارثة"
+              ]
+            ]
+          }
+        },
+        "4139": {
+          "number_in_kg_edition": 4139,
+          "normalized_full_text_exact": false,
+          "text_similarity": 0.8243,
+          "report_type": "مرفوع",
+          "meaning_group": 1937,
+          "takhrij": 8364177,
+          "sanads": {
+            "5150": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                7426,
+                "مسدد بن مسرهد بن مسربل بن مستورد"
+              ],
+              [
+                2,
+                8271,
+                "يحيى بن سعيد بن فروخ"
+              ],
+              [
+                3,
+                3795,
+                "شعبة بن الحجاج بن الورد"
+              ],
+              [
+                4,
+                2701,
+                "خبيب بن عبد الرحمن بن خبيب بن يساف"
+              ],
+              [
+                5,
+                2428,
+                "حفص بن عاصم بن عمر بن الخطاب"
+              ],
+              [
+                6,
+                201,
+                "رافع بن أوس بن المعلى بن لوذان بن حارثة بن عدى بن زيد بن ثعلبة بن زيد مناة بن حبيب بن عبد حارثة"
+              ]
+            ]
+          }
+        },
+        "4359": {
+          "number_in_kg_edition": 4359,
+          "normalized_full_text_exact": false,
+          "text_similarity": 0.6794,
+          "report_type": "مرفوع",
+          "meaning_group": 779,
+          "takhrij": 15794126,
+          "sanads": {
+            "5358": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                6879,
+                "محمد بن بشار بن عثمان بن داود بن كيسان"
+              ],
+              [
+                2,
+                6904,
+                "محمد بن جعفر"
+              ],
+              [
+                3,
+                3795,
+                "شعبة بن الحجاج بن الورد"
+              ],
+              [
+                4,
+                2701,
+                "خبيب بن عبد الرحمن بن خبيب بن يساف"
+              ],
+              [
+                5,
+                2428,
+                "حفص بن عاصم بن عمر بن الخطاب"
+              ],
+              [
+                6,
+                201,
+                "رافع بن أوس بن المعلى بن لوذان بن حارثة بن عدى بن زيد بن ثعلبة بن زيد مناة بن حبيب بن عبد حارثة"
+              ]
+            ]
+          }
+        },
+        "5006": {
+          "number_in_kg_edition": 5006,
+          "normalized_full_text_exact": false,
+          "text_similarity": 0.3364,
+          "report_type": "مرفوع",
+          "meaning_group": 57,
+          "takhrij": 40525287,
+          "sanads": {
+            "6127": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                30001,
+                "موضع تعليق"
+              ],
+              [
+                2,
+                6659,
+                "مالك بن أنس بن مالك بن أبي عامر بن عمرو"
+              ],
+              [
+                3,
+                7272,
+                "محمد بن مسلم بن عبيد الله بن عبد الله بن شهاب بن عبد الله بن الحارث بن زهرة بن كلاب"
+              ],
+              [
+                4,
+                543,
+                "أسعد بن سهل بن حنيف بن واهب"
+              ],
+              [
+                5,
+                4883,
+                "عبد الله بن عباس بن عبد المطلب بن هاشم بن عبد مناف"
+              ],
+              [
+                6,
+                2630,
+                "خالد بن الوليد بن المغيرة بن عبد الله بن عمر بن مخزوم بن يقظة بن مرة بن كعب بن لؤي"
+              ]
+            ],
+            "6128": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                5792,
+                "علي بن عبد الله بن جعفر بن نجيح"
+              ],
+              [
+                2,
+                8060,
+                "هشام بن يوسف"
+              ],
+              [
+                3,
+                7633,
+                "معمر بن راشد"
+              ],
+              [
+                4,
+                7272,
+                "محمد بن مسلم بن عبيد الله بن عبد الله بن شهاب بن عبد الله بن الحارث بن زهرة بن كلاب"
+              ],
+              [
+                5,
+                543,
+                "أسعد بن سهل بن حنيف بن واهب"
+              ],
+              [
+                6,
+                4883,
+                "عبد الله بن عباس بن عبد المطلب بن هاشم بن عبد مناف"
+              ],
+              [
+                7,
+                2630,
+                "خالد بن الوليد بن المغيرة بن عبد الله بن عمر بن مخزوم بن يقظة بن مرة بن كعب بن لؤي"
+              ]
+            ]
+          }
+        }
+      },
+      "4211": {
+        "3914": {
+          "number_in_kg_edition": 3914,
+          "normalized_full_text_exact": false,
+          "text_similarity": 0.9455,
+          "report_type": "مرفوع",
+          "meaning_group": 150,
+          "takhrij": 22447813,
+          "sanads": {
+            "4849": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                4598,
+                "عبد الغفار بن داود بن مهران بن زياد بن رداد بن ربيعة بن سليمان"
+              ],
+              [
+                2,
+                8527,
+                "يعقوب بن عبد الرحمن بن محمد بن عبد الله بن عبد"
+              ],
+              [
+                3,
+                6068,
+                "عمرو بن ميسرة"
+              ],
+              [
+                4,
+                720,
+                "أنس بن مالك بن النضر بن ضمضم بن زيد بن حرام"
+              ]
+            ],
+            "4850": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                479,
+                "أحمد بن عيسى بن حسان"
+              ],
+              [
+                2,
+                5147,
+                "عبد الله بن وهب بن مسلم"
+              ],
+              [
+                3,
+                8527,
+                "يعقوب بن عبد الرحمن بن محمد بن عبد الله بن عبد"
+              ],
+              [
+                4,
+                6068,
+                "عمرو بن ميسرة"
+              ],
+              [
+                5,
+                720,
+                "أنس بن مالك بن النضر بن ضمضم بن زيد بن حرام"
+              ]
+            ]
+          }
+        },
+        "2091": {
+          "number_in_kg_edition": 2091,
+          "normalized_full_text_exact": false,
+          "text_similarity": 0.8119,
+          "report_type": "مرفوع",
+          "meaning_group": 150,
+          "takhrij": 22447430,
+          "sanads": {
+            "2611": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                4598,
+                "عبد الغفار بن داود بن مهران بن زياد بن رداد بن ربيعة بن سليمان"
+              ],
+              [
+                2,
+                8527,
+                "يعقوب بن عبد الرحمن بن محمد بن عبد الله بن عبد"
+              ],
+              [
+                3,
+                6068,
+                "عمرو بن ميسرة"
+              ],
+              [
+                4,
+                720,
+                "أنس بن مالك بن النضر بن ضمضم بن زيد بن حرام"
+              ]
+            ]
+          }
+        },
+        "2693": {
+          "number_in_kg_edition": 2693,
+          "normalized_full_text_exact": false,
+          "text_similarity": 0.5566,
+          "report_type": "مرفوع",
+          "meaning_group": 189,
+          "takhrij": 19210220,
+          "sanads": {
+            "3384": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                6460,
+                "قتيبة بن سعيد بن جميل بن طريف بن عبد الله"
+              ],
+              [
+                2,
+                8527,
+                "يعقوب بن عبد الرحمن بن محمد بن عبد الله بن عبد"
+              ],
+              [
+                3,
+                6068,
+                "عمرو بن ميسرة"
+              ],
+              [
+                4,
+                720,
+                "أنس بن مالك بن النضر بن ضمضم بن زيد بن حرام"
+              ]
+            ]
+          }
+        },
+        "4211": {
+          "number_in_kg_edition": 4211,
+          "normalized_full_text_exact": false,
+          "text_similarity": 0.2358,
+          "report_type": "موقوف",
+          "meaning_group": null,
+          "takhrij": null,
+          "sanads": {}
+        }
+      },
+      "6722": {
+        "6255": {
+          "number_in_kg_edition": 6255,
+          "normalized_full_text_exact": false,
+          "text_similarity": 0.9594,
+          "report_type": "مرفوع",
+          "meaning_group": 255,
+          "takhrij": 38454088,
+          "sanads": {
+            "7769": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                30001,
+                "موضع تعليق"
+              ],
+              [
+                2,
+                3638,
+                "سماك بن حرب بن أوس بن خالد بن نزار بن معاوية بن حارثة بن ربيعة بن عامر بن ذهل بن ثعلبة"
+              ],
+              [
+                3,
+                1239,
+                "حسن بن يسار"
+              ],
+              [
+                4,
+                4387,
+                "عبد الرحمن بن سمرة بن حبيب بن عبد شمس"
+              ]
+            ],
+            "7770": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                30001,
+                "موضع تعليق"
+              ],
+              [
+                2,
+                585,
+                "أشهل بن حاتم"
+              ],
+              [
+                3,
+                4997,
+                "عبد الله بن عون بن أرطبان"
+              ],
+              [
+                4,
+                1239,
+                "حسن بن يسار"
+              ],
+              [
+                5,
+                4387,
+                "عبد الرحمن بن سمرة بن حبيب بن عبد شمس"
+              ]
+            ],
+            "7771": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                30001,
+                "موضع تعليق"
+              ],
+              [
+                2,
+                1412,
+                "ربيع بن صبيح"
+              ],
+              [
+                3,
+                1239,
+                "حسن بن يسار"
+              ],
+              [
+                4,
+                4387,
+                "عبد الرحمن بن سمرة بن حبيب بن عبد شمس"
+              ]
+            ],
+            "7772": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                30001,
+                "موضع تعليق"
+              ],
+              [
+                2,
+                2531,
+                "حميد بن تيرويه"
+              ],
+              [
+                3,
+                1239,
+                "حسن بن يسار"
+              ],
+              [
+                4,
+                4387,
+                "عبد الرحمن بن سمرة بن حبيب بن عبد شمس"
+              ]
+            ],
+            "7773": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                30001,
+                "موضع تعليق"
+              ],
+              [
+                2,
+                3640,
+                "سماك بن عطية"
+              ],
+              [
+                3,
+                1239,
+                "حسن بن يسار"
+              ],
+              [
+                4,
+                4387,
+                "عبد الرحمن بن سمرة بن حبيب بن عبد شمس"
+              ]
+            ],
+            "7774": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                30001,
+                "موضع تعليق"
+              ],
+              [
+                2,
+                6458,
+                "قتادة بن دعامة بن قتادة بن عزيز بن عمرو بن ربيعة"
+              ],
+              [
+                3,
+                1239,
+                "حسن بن يسار"
+              ],
+              [
+                4,
+                4387,
+                "عبد الرحمن بن سمرة بن حبيب بن عبد شمس"
+              ]
+            ],
+            "7775": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                30001,
+                "موضع تعليق"
+              ],
+              [
+                2,
+                7673,
+                "منصور بن المعتمر بن عبد الله بن ربيعة بن حريث بن مالك بن رفاعة بن الحارث بن بهثة بن سليم"
+              ],
+              [
+                3,
+                1239,
+                "حسن بن يسار"
+              ],
+              [
+                4,
+                4387,
+                "عبد الرحمن بن سمرة بن حبيب بن عبد شمس"
+              ]
+            ],
+            "7776": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                30001,
+                "موضع تعليق"
+              ],
+              [
+                2,
+                8042,
+                "هشام بن حسان"
+              ],
+              [
+                3,
+                1239,
+                "حسن بن يسار"
+              ],
+              [
+                4,
+                4387,
+                "عبد الرحمن بن سمرة بن حبيب بن عبد شمس"
+              ]
+            ],
+            "7777": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                30001,
+                "موضع تعليق"
+              ],
+              [
+                2,
+                8616,
+                "يونس بن عبيد بن دينار"
+              ],
+              [
+                3,
+                1239,
+                "حسن بن يسار"
+              ],
+              [
+                4,
+                4387,
+                "عبد الرحمن بن سمرة بن حبيب بن عبد شمس"
+              ]
+            ],
+            "7778": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                7323,
+                "محمد بن يحيى بن عبد الله بن خالد بن فارس بن ذؤيب"
+              ],
+              [
+                2,
+                5544,
+                "عثمان بن عمر بن فارس بن لقيط"
+              ],
+              [
+                3,
+                4997,
+                "عبد الله بن عون بن أرطبان"
+              ],
+              [
+                4,
+                1239,
+                "حسن بن يسار"
+              ],
+              [
+                5,
+                4387,
+                "عبد الرحمن بن سمرة بن حبيب بن عبد شمس"
+              ]
+            ]
+          }
+        },
+        "6640": {
+          "number_in_kg_edition": 6640,
+          "normalized_full_text_exact": false,
+          "text_similarity": 0.6412,
+          "report_type": "مرفوع",
+          "meaning_group": 255,
+          "takhrij": 38451359,
+          "sanads": {
+            "8284": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                2291,
+                "حجاج بن منهال"
+              ],
+              [
+                2,
+                2119,
+                "جرير بن حازم بن زيد بن عبد الله بن شجاع"
+              ],
+              [
+                3,
+                1239,
+                "حسن بن يسار"
+              ],
+              [
+                4,
+                4387,
+                "عبد الرحمن بن سمرة بن حبيب بن عبد شمس"
+              ]
+            ]
+          }
+        },
+        "6641": {
+          "number_in_kg_edition": 6641,
+          "normalized_full_text_exact": false,
+          "text_similarity": 0.6216,
+          "report_type": "مرفوع",
+          "meaning_group": 255,
+          "takhrij": 38441304,
+          "sanads": {
+            "8285": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                4978,
+                "عبد الله بن عمرو بن ميسرة"
+              ],
+              [
+                2,
+                5270,
+                "عبد الوارث بن سعيد بن ذكوان"
+              ],
+              [
+                3,
+                8616,
+                "يونس بن عبيد بن دينار"
+              ],
+              [
+                4,
+                1239,
+                "حسن بن يسار"
+              ],
+              [
+                5,
+                4387,
+                "عبد الرحمن بن سمرة بن حبيب بن عبد شمس"
+              ]
+            ]
+          }
+        },
+        "6722": {
+          "number_in_kg_edition": 6722,
+          "normalized_full_text_exact": false,
+          "text_similarity": 0.1947,
+          "report_type": "مرفوع",
+          "meaning_group": 987,
+          "takhrij": 43320138,
+          "sanads": {
+            "8392": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                4943,
+                "عبد الله بن عثمان بن جبلة بن ميمون"
+              ],
+              [
+                2,
+                5503,
+                "عثمان بن جبلة بن أبي رواد"
+              ],
+              [
+                3,
+                3795,
+                "شعبة بن الحجاج بن الورد"
+              ],
+              [
+                4,
+                6155,
+                "عمرو بن عبد الله بن عبيد"
+              ],
+              [
+                5,
+                1157,
+                "براء بن عازب بن الحارث بن عدي بن مجدعة بن حارثة بن الحارث بن الخزرج بن عمرو بن مالك بن الأوس"
+              ]
+            ]
+          }
+        }
+      },
+      "742": {
+        "703": {
+          "number_in_kg_edition": 703,
+          "normalized_full_text_exact": false,
+          "text_similarity": 0.9496,
+          "report_type": "مرفوع",
+          "meaning_group": 377,
+          "takhrij": 7609151,
+          "sanads": {
+            "867": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                6879,
+                "محمد بن بشار بن عثمان بن داود بن كيسان"
+              ],
+              [
+                2,
+                6904,
+                "محمد بن جعفر"
+              ],
+              [
+                3,
+                3795,
+                "شعبة بن الحجاج بن الورد"
+              ],
+              [
+                4,
+                6458,
+                "قتادة بن دعامة بن قتادة بن عزيز بن عمرو بن ربيعة"
+              ],
+              [
+                5,
+                720,
+                "أنس بن مالك بن النضر بن ضمضم بن زيد بن حرام"
+              ]
+            ]
+          }
+        },
+        "782": {
+          "number_in_kg_edition": 782,
+          "normalized_full_text_exact": false,
+          "text_similarity": 0.6297,
+          "report_type": "مرفوع",
+          "meaning_group": 970,
+          "takhrij": 14322993,
+          "sanads": {
+            "955": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                6879,
+                "محمد بن بشار بن عثمان بن داود بن كيسان"
+              ],
+              [
+                2,
+                6904,
+                "محمد بن جعفر"
+              ],
+              [
+                3,
+                3795,
+                "شعبة بن الحجاج بن الورد"
+              ],
+              [
+                4,
+                6458,
+                "قتادة بن دعامة بن قتادة بن عزيز بن عمرو بن ربيعة"
+              ],
+              [
+                5,
+                720,
+                "أنس بن مالك بن النضر بن ضمضم بن زيد بن حرام"
+              ]
+            ]
+          }
+        },
+        "3541": {
+          "number_in_kg_edition": 3541,
+          "normalized_full_text_exact": false,
+          "text_similarity": 0.6043,
+          "report_type": "مرفوع",
+          "meaning_group": 470,
+          "takhrij": 15141698,
+          "sanads": {
+            "4427": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                6879,
+                "محمد بن بشار بن عثمان بن داود بن كيسان"
+              ],
+              [
+                2,
+                6904,
+                "محمد بن جعفر"
+              ],
+              [
+                3,
+                3795,
+                "شعبة بن الحجاج بن الورد"
+              ],
+              [
+                4,
+                6458,
+                "قتادة بن دعامة بن قتادة بن عزيز بن عمرو بن ربيعة"
+              ],
+              [
+                5,
+                720,
+                "أنس بن مالك بن النضر بن ضمضم بن زيد بن حرام"
+              ]
+            ]
+          }
+        },
+        "742": {
+          "number_in_kg_edition": 742,
+          "normalized_full_text_exact": false,
+          "text_similarity": 0.3401,
+          "report_type": "مرفوع",
+          "meaning_group": 389,
+          "takhrij": 4310015,
+          "sanads": {
+            "909": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                5175,
+                "عبد الله بن يوسف"
+              ],
+              [
+                2,
+                6659,
+                "مالك بن أنس بن مالك بن أبي عامر بن عمرو"
+              ],
+              [
+                3,
+                4798,
+                "عبد الله بن ذكوان"
+              ],
+              [
+                4,
+                4506,
+                "عبد الرحمن بن هرمز"
+              ],
+              [
+                5,
+                4396,
+                "عبد الرحمن بن صخر"
+              ]
+            ]
+          }
+        }
+      },
+      "2858": {
+        "2659": {
+          "number_in_kg_edition": 2659,
+          "normalized_full_text_exact": false,
+          "text_similarity": 0.9398,
+          "report_type": "مرفوع",
+          "meaning_group": 488,
+          "takhrij": 10777710,
+          "sanads": {
+            "3344": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                1382,
+                "حكم بن نافع"
+              ],
+              [
+                2,
+                3801,
+                "شعيب بن دينار"
+              ],
+              [
+                3,
+                7272,
+                "محمد بن مسلم بن عبيد الله بن عبد الله بن شهاب بن عبد الله بن الحارث بن زهرة بن كلاب"
+              ],
+              [
+                4,
+                3194,
+                "سالم بن عبد الله بن عمر بن الخطاب"
+              ],
+              [
+                5,
+                4967,
+                "عبد الله بن عمر بن الخطاب بن نفيل"
+              ]
+            ]
+          }
+        },
+        "6044": {
+          "number_in_kg_edition": 6044,
+          "normalized_full_text_exact": false,
+          "text_similarity": 0.7619,
+          "report_type": "مرفوع",
+          "meaning_group": 1337,
+          "takhrij": 20666726,
+          "sanads": {
+            "7485": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                1382,
+                "حكم بن نافع"
+              ],
+              [
+                2,
+                3801,
+                "شعيب بن دينار"
+              ],
+              [
+                3,
+                7272,
+                "محمد بن مسلم بن عبيد الله بن عبد الله بن شهاب بن عبد الله بن الحارث بن زهرة بن كلاب"
+              ],
+              [
+                4,
+                3194,
+                "سالم بن عبد الله بن عمر بن الخطاب"
+              ],
+              [
+                5,
+                4967,
+                "عبد الله بن عمر بن الخطاب بن نفيل"
+              ]
+            ]
+          }
+        },
+        "1075": {
+          "number_in_kg_edition": 1075,
+          "normalized_full_text_exact": false,
+          "text_similarity": 0.7239,
+          "report_type": "مرفوع",
+          "meaning_group": 70,
+          "takhrij": 37400316,
+          "sanads": {
+            "1324": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                1382,
+                "حكم بن نافع"
+              ],
+              [
+                2,
+                3801,
+                "شعيب بن دينار"
+              ],
+              [
+                3,
+                7272,
+                "محمد بن مسلم بن عبيد الله بن عبد الله بن شهاب بن عبد الله بن الحارث بن زهرة بن كلاب"
+              ],
+              [
+                4,
+                3194,
+                "سالم بن عبد الله بن عمر بن الخطاب"
+              ],
+              [
+                5,
+                4967,
+                "عبد الله بن عمر بن الخطاب بن نفيل"
+              ]
+            ]
+          }
+        },
+        "2858": {
+          "number_in_kg_edition": 2858,
+          "normalized_full_text_exact": false,
+          "text_similarity": 0.3404,
+          "report_type": "مرفوع",
+          "meaning_group": 491,
+          "takhrij": 30379865,
+          "sanads": {
+            "3574": [
+              [
+                0,
+                6817,
+                "محمد بن إسماعيل بن إبراهيم بن المغيرة بن بذدزبة"
+              ],
+              [
+                1,
+                2234,
+                "حبان بن موسى بن سوار"
+              ],
+              [
+                2,
+                4716,
+                "عبد الله بن المبارك بن واضح"
+              ],
+              [
+                3,
+                2654,
+                "خالد بن سعيد بن عمرو بن سعيد بن العاص بن سعيد بن العاص بن أمية بن عبد شمس"
+              ],
+              [
+                4,
+                3381,
+                "سعيد بن عمرو بن سعيد بن العاص بن سعيد بن العاص بن أمية بن عبد شمس"
+              ],
+              [
+                5,
+                696,
+                "أمة بنت خالد بن سعيد بن العاص بن أمية بن عبد شمس بن عبد مناف"
+              ]
+            ]
+          }
+        }
+      }
+    },
+    "orphan_inline_narrator_mentions": 1976,
+    "visual_refs_with_any_exact_arabic_match": 114
+  }
+}
