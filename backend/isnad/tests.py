@@ -1,8 +1,10 @@
 import csv
-from io import StringIO
+import json
+from io import BytesIO, StringIO
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
+from urllib.error import HTTPError, URLError
 
 from django.core.management import call_command
 from django.core.management.base import CommandError
@@ -339,8 +341,6 @@ class NarratorProfileApiTests(APITestCase):
 
 class KnowledgeGraphTests(SimpleTestCase):
     def test_hadith_endpoint_keeps_sanads_separate_and_orders_edges(self):
-        import json
-
         sanads = [
             {"sanadId": 12, "grade": "صحيح", "chain": [{"rawiId": 11}, {"rawiId": 21}, {"rawiId": 31}]},
             {"sanadId": 13, "chain": [{"rawiId": 11}, {"rawiId": 41}]},
@@ -370,6 +370,54 @@ class KnowledgeGraphTests(SimpleTestCase):
             "students": [{"id": 3}],
             "aqwal": [{"alemId": 4}],
         })
+
+    def test_proxy_preserves_utf8_response_bytes_and_declares_charset(self):
+        name = "سفيان بن عيينة"
+        grade = "ثقة"
+        text = "إنما الأعمال بالنيات"
+        fixtures = (
+            ("hadiths/17154", {
+                "matnClean": text,
+                "sanads": [{
+                    "sanadId": 12,
+                    "grade": grade,
+                    "chain": [{"rawiId": 3567, "name": name, "rank": grade}],
+                }],
+            }),
+            ("rawis/3567", {"name": name, "rank": grade}),
+        )
+        for route, payload in fixtures:
+            with self.subTest(route=route):
+                wire_bytes = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+                with patch("isnad.knowledge_graph.urlopen", return_value=BytesIO(wire_bytes)):
+                    response = self.client.get(f"/api/v1/knowledge-graph/{route}/", HTTP_ACCEPT="application/json")
+
+                self.assertEqual(response.status_code, 200)
+                for key, value in payload.items():
+                    self.assertEqual(response.data[key], value)
+                self.assertIn(name.encode("utf-8"), response.content)
+                self.assertIn(grade.encode("utf-8"), response.content)
+                decoded = json.loads(response.content.decode("utf-8"))
+                if "sanads" in payload:
+                    self.assertEqual(decoded["matnClean"], text)
+                    chain = decoded["visual_isnad_chains"][0]
+                    self.assertEqual(chain["grade"], grade)
+                    self.assertEqual(chain["narrators"][0]["arabic_name"], name)
+                    self.assertEqual(chain["narrators"][0]["grade"], grade)
+                self.assertEqual(response["Content-Type"], "application/json; charset=utf-8")
+
+    def test_proxy_maps_upstream_http_and_connection_errors(self):
+        for route in ("hadiths/17154", "rawis/3567"):
+            for error, expected in (
+                (HTTPError("http://example.test", 404, "Not Found", None, None), 404),
+                (HTTPError("http://example.test", 500, "Server Error", None, None), 502),
+                (URLError("Connection refused"), 502),
+            ):
+                with self.subTest(route=route, error=error):
+                    with patch("isnad.knowledge_graph.urlopen", side_effect=error):
+                        response = self.client.get(f"/api/v1/knowledge-graph/{route}/")
+                    self.assertEqual(response.status_code, expected)
+                    self.assertIn("error", response.json())
 
     def test_malformed_hadith_from_upstream_returns_bad_gateway(self):
         payload = '{"sanads":[{"sanadId":12,"chain":[{}]}]}'
