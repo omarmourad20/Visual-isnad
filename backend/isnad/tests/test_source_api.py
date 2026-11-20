@@ -26,6 +26,7 @@ class SourceAPITests(APITestCase):
         self.addCleanup(directory.cleanup)
         manifest = Path(directory.name) / "sources.json"
         manifest.write_text(json.dumps(self.bundle), encoding="utf-8")
+        self.settings_path = manifest
         settings = override_settings(HADITH_SOURCE_CROSSWALK=str(manifest))
         settings.enable()
         self.addCleanup(settings.disable)
@@ -82,6 +83,24 @@ class SourceAPITests(APITestCase):
         self.assertEqual(manifest["policy"], "text_reference_review_only_no_chain_adoption")
         with self.assertRaises(ValueError):
             review(self.bundle, [{**decision, "right_text_digest": "stale"}])
+
+    def test_no_match_is_distinct_from_missing_configuration_and_stale_data(self):
+        Hadith.objects.create(id=16, hadith_number="16", book_title="Sahih al-Bukhari", arabic_matn="غيره")
+        empty = self.client.get("/api/v1/hadiths/16/sources/").json()
+        self.assertEqual((empty["status"], empty["count"]), ("available", 0))
+        self.hadith.arabic_matn = "نص مختلف"
+        self.hadith.save(update_fields=["arabic_matn"])
+        self.assertEqual(self.client.get(self.root + "sources/").json()["status"], "stale")
+        with self.settings(HADITH_SOURCE_CROSSWALK=""):
+            self.assertEqual(self.client.get(self.root + "sources/").json()["status"], "not_configured")
+
+    def test_matching_live_text_at_changed_edition_reference_is_rejected(self):
+        row = self.bundle["proposals"][0]
+        row["reference"] = "14"
+        Path(self.settings_path).write_text(json.dumps(self.bundle), encoding="utf-8")
+        data = {"bookId": 1, "noInBook": 19, "matnClean": self.candidate.arabic_matn}
+        with patch("isnad.knowledge_graph.urlopen", return_value=BytesIO(json.dumps(data).encode())):
+            self.assertEqual(self.client.get(self.routes, self.params).status_code, 409)
 
     def test_many_to_one_is_ambiguous(self):
         other = HadithRecord("visual_isnad", "", "16", "صحيح البخاري", self.candidate.arabic_matn)

@@ -108,6 +108,11 @@ _db = dj_database_url.config(
 if "postgresql" in _db.get("ENGINE", "") or "postgres" in _db.get("ENGINE", ""):
     _db["CONN_MAX_AGE"] = 600
     _db["CONN_HEALTH_CHECKS"] = True
+# Explicit opt-in for inspecting the same SQLite file used to build a crosswalk.
+_source_preview_db = os.environ.get("HADITH_SOURCE_PREVIEW_DB")
+if _source_preview_db:
+    _preview_path = Path(_source_preview_db).resolve(strict=True)
+    _db = {"ENGINE": "django.db.backends.sqlite3", "NAME": _preview_path.as_uri() + "?mode=ro"}
 DATABASES = {"default": _db}
 
 CACHES = {

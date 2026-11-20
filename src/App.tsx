@@ -438,6 +438,8 @@ function Explorer({ onHome }: { onHome: () => void }) {
   const [sourcePage, setSourcePage] = useState(1)
   const [hasMoreSources, setHasMoreSources] = useState(false)
   const [sourceError, setSourceError] = useState('')
+  const [sourceStatus, setSourceStatus] = useState('loading')
+  const [previewPending, setPreviewPending] = useState(false)
   const [previewingSource, setPreviewingSource] = useState<SourceCandidate | null>(null)
   const sourceHadithNumber = kgHadithId === null ? currentHadith?.hadith_number : undefined
   const [selectedId, setSelectedId] = useState<number | null>(null)
@@ -491,6 +493,7 @@ function Explorer({ onHome }: { onHome: () => void }) {
 
   const hadithRequest = useRef(0)
   const localChain = useRef<{ narrators?: unknown; edges?: unknown }>({})
+  const localSelection = useRef<{ index: number; narrator: number | null; edge: number | null } | null>(null)
 
   const applyChain = (payload: { narrators?: unknown; edges?: unknown }) => {
     const mapped = unwrapList<NarratorRecord>(payload?.narrators).map(mapNarrator)
@@ -507,6 +510,8 @@ function Explorer({ onHome }: { onHome: () => void }) {
   useEffect(() => {
     setSourceCandidates([])
     setHasMoreSources(false)
+    setSourceStatus('loading')
+    setSourceError('')
     if (!sourceHadithNumber) return
     const controller = new AbortController()
     void fetchJson(`/hadiths/${encodeURIComponent(sourceHadithNumber)}/sources/?page=${sourcePage}&page_size=10`, {
@@ -515,14 +520,16 @@ function Explorer({ onHome }: { onHome: () => void }) {
       if (controller.signal.aborted) return
       setSourceCandidates(unwrapList<SourceCandidate>(data))
       setHasMoreSources(Boolean(data.next))
-      if (data.status === 'unavailable') setSourceError('External source proposals are temporarily unavailable.')
+      setSourceStatus(data.status ?? 'available')
     }).catch(() => {
-      if (!controller.signal.aborted) setSourceError('Could not load external source proposals.')
+      if (!controller.signal.aborted) setSourceStatus('unavailable')
     })
     return () => controller.abort()
   }, [sourceHadithNumber, sourcePage])
 
   const previewSource = async (candidate: SourceCandidate) => {
+    if (!sourceHadithNumber || previewPending) return
+    setPreviewPending(true)
     const request = ++hadithRequest.current
     setSourceError('')
     try {
@@ -535,6 +542,7 @@ function Explorer({ onHome }: { onHome: () => void }) {
         setSourceError('This external source has no stored routes.')
         return
       }
+      if (!previewingSource) localSelection.current = { index: chainIndex, narrator: selectedId, edge: selectedEdge }
       setPreviewingSource(candidate)
       setKgChains(routes)
       setSelectedKgSanadId(routes[0].sanad_id)
@@ -543,12 +551,15 @@ function Explorer({ onHome }: { onHome: () => void }) {
       if (request === hadithRequest.current) {
         setSourceError('External chain unavailable or its text does not corroborate this proposal.')
       }
+    } finally {
+      if (request === hadithRequest.current) setPreviewPending(false)
     }
   }
 
   const loadKnowledgeGraphHadith = async (hadithId: number) => {
     const request = ++hadithRequest.current
     setLoadError('')
+    setPreviewPending(false)
     try {
       const data = await fetchJson(`/knowledge-graph/hadiths/${hadithId}/`)
       if (request !== hadithRequest.current) return
@@ -596,6 +607,8 @@ function Explorer({ onHome }: { onHome: () => void }) {
   const selectHadith = async (hadith: Pick<HadithRecord, 'id' | 'hadith_number'>, bookNumber?: number) => {
     const request = ++hadithRequest.current
     setHadithReaderOpen(false)
+    setPreviewPending(false)
+    localSelection.current = null
     setCatalogOpen(false)
     setKgHadithId(null)
     setPreviewingSource(null)
@@ -1274,15 +1287,29 @@ function Explorer({ onHome }: { onHome: () => void }) {
                 setKgChains([])
                 setSelectedKgSanadId(null)
                 setSourceError('')
+                setPreviewPending(false)
                 applyChain(localChain.current)
+                if (localSelection.current) {
+                  setChainIndex(localSelection.current.index)
+                  setSelectedId(localSelection.current.narrator)
+                  setSelectedEdge(localSelection.current.edge)
+                  localSelection.current = null
+                }
               }}>
                 Restore Visual Isnad chains
               </button>
             )}
-            {(sourceCandidates.length > 0 || sourcePage > 1) && (
+            {sourceHadithNumber && (
               <details className="source-proposals">
                 <summary>External source proposals</summary>
-                <p>These proposals are unreviewed. Text agreement cannot establish an equivalent transmission chain.</p>
+                {sourceStatus === 'loading' && <p role="status">Loading source proposals…</p>}
+                {sourceStatus === 'not_configured' && <p>External source proposals have not been configured.</p>}
+                {sourceStatus === 'stale' && <p>The local hadith text has changed. Rebuild the source crosswalk.</p>}
+                {sourceStatus === 'not_applicable' && <p>Source matching is available for Sahih al-Bukhari.</p>}
+                {sourceStatus === 'unavailable' && <p role="status">External source proposals are unavailable.</p>}
+                {sourceStatus === 'available' && !sourceCandidates.length && <p>No matching source proposals for this hadith.</p>}
+                {previewPending && <p role="status">Loading external routes…</p>}
+                {sourceCandidates.length > 0 && <p>These proposals are unreviewed. Text agreement cannot establish an equivalent transmission chain.</p>}
                 <ul>
                   {sourceCandidates.map(candidate => (
                     <li key={candidate.right_key}>
@@ -1293,7 +1320,7 @@ function Explorer({ onHome }: { onHome: () => void }) {
                         {candidate.isnad_agreement === 'text_differs' && ' The recorded isnad text differs.'}
                       </p>
                       {candidate.can_preview_routes && (
-                        <button className="knowledge-graph-load" type="button" onClick={() => void previewSource(candidate)}>
+                        <button className="knowledge-graph-load" type="button" disabled={previewPending} onClick={() => void previewSource(candidate)}>
                           Preview external chains
                         </button>
                       )}

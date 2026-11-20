@@ -300,9 +300,11 @@ class HadithViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["get"], url_path="sources")
     def sources(self, request, *args, **kwargs):
         state, candidates = source_candidates(self.get_object())
-        return self.get_paginated_response(self.paginate_queryset(candidates)) if state == "available" else Response({
-            "count": 0, "next": None, "previous": None, "results": [], "status": state,
-        })
+        if state != "available":
+            return Response({"count": 0, "next": None, "previous": None, "results": [], "status": state})
+        response = self.get_paginated_response(self.paginate_queryset(candidates))
+        response.data["status"] = "available"
+        return response
 
     @action(detail=True, methods=["get"], url_path="source-routes")
     def source_routes(self, request, *args, **kwargs):
@@ -318,7 +320,9 @@ class HadithViewSet(viewsets.ModelViewSet):
                 candidate["provider"], candidate["edition"], candidate["right_id"], "صحيح البخاري",
                 data.get("matnClean") or "", str(data.get("noInBook") or ""), data.get("nass") or "",
             )
-            if str(data.get("bookId")) != "1" or propose_match(local_record(instance), live_record).status != "review_required":
+            reference_changed = candidate["reference"] and live_record.printed_reference != candidate["reference"]
+            if (str(data.get("bookId")) != "1" or reference_changed
+                    or propose_match(local_record(instance), live_record).status != "review_required"):
                 return Response({"error": "Live Knowledge Graph text or collection does not corroborate this proposal"}, status=409)
             return Response({"proposal": candidate, "routes": data["visual_isnad_chains"]})
         except UPSTREAM_ERRORS as error:

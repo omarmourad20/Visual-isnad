@@ -101,3 +101,55 @@ Run the full Django tests from `backend` with
 `pnpm exec tsc --noEmit`, and `pnpm build` from the checkout root.
 The Django suite passed on Linux with Python 3.12.14 and 3.15.2.
 Live Windows KG and Windows-specific behavior still require a local run.
+
+## Automated Windows setup and end-to-end check
+
+Run in a dedicated PowerShell session from the checkout root. The expected
+hadith and edge counts default to 7,252 and 41,123 for the reported Windows
+database. Override both counts only when intentionally selecting another
+Visual Isnad build. The project venv is used automatically.
+
+```powershell
+.\scripts\Setup-SourcePreview.ps1 -KnowledgeGraphDb 'C:\sources\hadith-kg.db' `
+  -FawazJson 'C:\sources\ara-bukhari.min.json' -JaguarJson 'C:\sources\bukhari.json'
+.\backend\venv\Scripts\python.exe .\backend\manage.py runserver 127.0.0.1:8000
+```
+
+Omit Fawaz or Jaguar when you only need KG. Pass `-VisualDb` to use an
+explicit alternate Visual Isnad file. Build input checks happen before any
+output is written. A fresh temp directory holds the exports and proposals.
+The setup configures `HADITH_SOURCE_CROSSWALK`, `HADITH_KG_API_URL`, and
+`HADITH_SOURCE_PREVIEW_DB` in the calling PowerShell session. The preview
+server uses SQLite URI `mode=ro` for the exact selected file. Use a dedicated
+shell so normal editor sessions continue to use their own database
+configuration. For an active WAL database use a consistent backup if you
+also need to avoid touching SQLite's shared-memory sidecars.
+
+Download the audited **relational** [KG release](https://huggingface.co/datasets/emadjumaah/hadith-kg/resolve/main/hadith-kg.db),
+the [Fawaz Arabic minified edition](https://cdn.jsdelivr.net/gh/fawazahmed0/hadith-api@1/editions/ara-bukhari.min.json),
+and extract `bukhari.json` from [Jaguar release v1.1.0](https://github.com/Jaguar16/open-hadith-data/releases/tag/v1.1.0).
+The setup rejects files whose SHA-256 does not match the audited bytes,
+including reserialized JSON and the KG app database. Keep inputs and
+generated manifests out of Git.
+
+After Django is listening, run from another terminal:
+
+```powershell
+.\scripts\Setup-SourcePreview.ps1 -VerifyOnly
+```
+
+The verifier checks the configured KG stats and Hadith 14 upstream, Django's
+conversion, its HTTP proposal for Visual 15, both ordered KG routes and
+their provenance, and the original graph before and after preview. Set
+`-DjangoUrl` and `-KnowledgeGraphUrl` if using different ports. If the original
+chain endpoint fails, check that the selected Visual SQLite schema already
+matches the running Django code. The tools do not alter the schema. If
+Django reports `not_configured`, start it from the shell that built the
+crosswalk. A `stale` response indicates that indexed local content no
+longer matches the digest. An `available` response with count zero indicates
+no proposal for that record.
+
+In React, open Bukhari 15, expand **External source proposals**, and preview
+Knowledge Graph. Select sanad 29 and 30, then restore Visual Isnad. Each route
+ends at Anas in the provider graph. The local selected chain, narrator and
+edge are restored. A provider failure preserves the graph already on screen.

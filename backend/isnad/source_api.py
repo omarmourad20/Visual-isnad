@@ -52,7 +52,7 @@ def source_candidates(hadith):
         stat = path.stat()
         rows = load_proposals(path, stat.st_mtime_ns, stat.st_size).get(str(hadith.pk), {})
         digest = text_digest(local_record(hadith))
-        return "available", [{
+        candidates = [{
             **{field: row[field] for field in (
                 "right_key", "right_id", "provider", "edition", "reference", "confidence",
                 "evidence", "reference_equal", "reason", "ambiguity",
@@ -62,5 +62,6 @@ def source_candidates(hadith):
             "can_preview_routes": row["provider"] == "hadith_kg" and row["right_id"].isascii()
             and row["right_id"].isdecimal() and len(row["right_id"]) <= 10,
         } for row in rows.values() if row["left_text_digest"] == digest]
+        return ("stale" if rows and not candidates else "available"), candidates
     except (OSError, ValueError, TypeError, KeyError, AttributeError):
         return "unavailable", []
