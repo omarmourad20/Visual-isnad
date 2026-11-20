@@ -105,6 +105,7 @@ type HadithRecord = {
   chapter_title?: string
   chapter_title_arabic?: string
   arabic_matn?: string
+  chain_boundaries_recorded?: boolean
   arabic_isnad?: string
   arabic_full?: string
   english_matn?: string
@@ -1240,12 +1241,15 @@ function Explorer({ onHome }: { onHome: () => void }) {
                   ? 'EXTERNAL · KNOWLEDGE GRAPH · UNREVIEWED'
                   : 'VISUAL ISNAD TRANSMISSION PATH'}</p>
                 <h2>Chain of narration <span>{chainNarrators.length} nodes · {edges.length} transmissions</span></h2>
+                {kgHadithId === null && !previewingSource && currentHadith?.chain_boundaries_recorded === false && (
+                  <p>Some route boundaries are unverified. The graph shows contiguous recorded edges.</p>
+                )}
                 {chains.length > 1 && (
                   <label>
                     Isnād{' '}
                     <select value={chainIndex} onChange={(event) => selectChain(Number(event.target.value))}>
                       {chains.map((chain, index) => (
-                        <option key={chain[0].id} value={index}>Chain {index + 1} of {chains.length}</option>
+                        <option key={chain[0].id} value={index}>{currentHadith?.chain_boundaries_recorded === false && kgHadithId === null && !previewingSource ? 'Segment' : 'Chain'} {index + 1} of {chains.length}</option>
                       ))}
                     </select>
                   </label>

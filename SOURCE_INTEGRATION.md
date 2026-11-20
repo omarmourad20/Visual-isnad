@@ -153,3 +153,45 @@ In React, open Bukhari 15, expand **External source proposals**, and preview
 Knowledge Graph. Select sanad 29 and 30, then restore Visual Isnad. Each route
 ends at Anas in the provider graph. The local selected chain, narrator and
 edge are restored. A provider failure preserves the graph already on screen.
+
+## Windows legacy SQLite and one-command preview
+
+Migration `isnad.0003_transmissionedge_chain_index` added a nullable
+`chain_index` column. Databases at schema 0002 can now serve hadith detail,
+bootstrap, narrator relationships, and edge reads without applying 0003.
+The API preserves IDs, endpoints and sequence and returns null for unknown
+indices. The browser displays contiguous recorded edge segments and labels
+unknown route boundaries. It never writes an index or treats an external
+sanad as an original route. Staff edge edits are disabled when the column
+is absent. Database editing is also unavailable in the read-only preview.
+
+For a standard Windows checkout run from its repository root:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Setup-SourcePreview.ps1 -KnowledgeGraphDb 'C:\sources\hadith-kg.db' -DjangoUrl 'http://127.0.0.1:8769' -StartServer
+```
+
+The child PowerShell's execution policy applies to that process only. The
+wrapper resolves the project and venv from its script location. It checks
+the requested loopback port, and starts Django in the same worktree with
+the exact validated SQLite path and crosswalk in its inherited environment.
+It reports the new server PID and log paths and leaves that server running
+for browser verification. If the port is occupied, choose another one.
+The wrapper never terminates an existing process. If you start Django
+manually instead, run the setup in the same shell or set
+`HADITH_SOURCE_PREVIEW_DB` and `HADITH_SOURCE_CROSSWALK` explicitly.
+
+For the legacy database expect the verifier to report
+`chain_index_available=False`, then pass both converted KG routes and the
+unchanged local graph check. Keep the original database at its current
+schema for this verification. Any future editor schema decision should
+first use a consistent SQLite backup and validate integrity and foreign
+keys on a disposable copy. Migration 0003 alone leaves existing indices
+null and does not reconstruct routes; reverse migration removes that
+column and would discard any indices subsequently recorded there.
+
+If using Vite with the server on 8769, start it from another shell with
+`$env:VITE_API_BASE_URL = 'http://127.0.0.1:8769'`. If the browser reports
+a cross-origin error, configure Django's explicit
+`CORS_ALLOWED_ORIGINS` for the exact Vite URL in the shell that launches
+setup and Django.

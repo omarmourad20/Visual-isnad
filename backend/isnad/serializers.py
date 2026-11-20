@@ -67,3 +67,11 @@ class TransmissionEdgeSerializer(serializers.ModelSerializer):
     class Meta:
         model = TransmissionEdge
         fields = "__all__"
+
+
+class LegacyTransmissionEdgeSerializer(TransmissionEdgeSerializer):
+    """Keep the existing wire shape without reading a missing database column."""
+    chain_index = serializers.SerializerMethodField()
+
+    def get_chain_index(self, obj):
+        return None

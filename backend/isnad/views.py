@@ -21,6 +21,7 @@ from .editor_auth import issue_editor_token
 from .permissions import StaffWritePermission
 from .throttles import LoginRateThrottle
 from .models import Hadith, Narrator, TransmissionEdge
+from .edge_schema import has_chain_index
 from .knowledge_graph import UPSTREAM_ERRORS, fetch_record, unavailable
 from .source_api import local_record, source_candidates
 from .source_matching import HadithRecord, propose_match
@@ -30,6 +31,7 @@ from .serializers import (
     HadithListSerializer,
     HadithSerializer,
     NarratorSerializer,
+    LegacyTransmissionEdgeSerializer,
     TransmissionEdgeSerializer,
 )
 
@@ -57,16 +59,19 @@ def resolve_hadith_lookup(lookup: str | None) -> Hadith | None:
 
 
 def chain_payload(hadith: Hadith) -> dict:
-    edges = list(
-        TransmissionEdge.objects.filter(hadith=hadith)
-        .order_by("sequence")
-        .only("id", "teacher_id", "student_id", "hadith_id", "terminology", "sequence", "chain_index")
-    )
+    queryset = TransmissionEdge.objects.filter(hadith=hadith).order_by("sequence", "id")
+    indexed_schema = has_chain_index(queryset.db)
+    serializer = TransmissionEdgeSerializer if indexed_schema else LegacyTransmissionEdgeSerializer
+    if not indexed_schema:
+        queryset = queryset.defer("chain_index")
+    edges = list(queryset)
     narrator_ids = {edge.teacher_id for edge in edges} | {edge.student_id for edge in edges}
     narrators = Narrator.objects.filter(id__in=narrator_ids).only(*COMPACT_NARRATOR_FIELDS)
     return {
         "narrators": CompactNarratorSerializer(narrators, many=True).data,
-        "edges": TransmissionEdgeSerializer(edges, many=True).data,
+        "edges": serializer(edges, many=True).data,
+        "chain_index_available": indexed_schema,
+        "chain_boundaries_recorded": indexed_schema and all(edge.chain_index is not None for edge in edges),
     }
 
 
@@ -352,8 +357,23 @@ class TransmissionEdgeViewSet(viewsets.ModelViewSet):
     serializer_class = TransmissionEdgeSerializer
     permission_classes = [StaffWritePermission]
 
+    def initial(self, request, *args, **kwargs):
+        super().initial(request, *args, **kwargs)
+        self.indexed_schema = has_chain_index(self.queryset.db)
+        if not self.indexed_schema and request.method not in {"GET", "HEAD", "OPTIONS"}:
+            from rest_framework.exceptions import APIException
+
+            error = APIException("Transmission edge editing requires the chain_index schema.")
+            error.status_code = 409
+            raise error
+
+    def get_serializer_class(self):
+        return TransmissionEdgeSerializer if self.indexed_schema else LegacyTransmissionEdgeSerializer
+
     def get_queryset(self):
         queryset = super().get_queryset()
+        if not self.indexed_schema:
+            queryset = queryset.defer("chain_index")
         hadith_number = self.request.query_params.get("hadith_number")
         hadith_id = self.request.query_params.get("hadith_id")
         hadith = hadith_by_number(hadith_number) if hadith_number else hadith_by_pk(hadith_id)

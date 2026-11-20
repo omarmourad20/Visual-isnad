@@ -49,6 +49,8 @@ def setup(args):
                        for table in ("isnad_hadith", "isnad_transmissionedge"))
         if counts != (args.expected_hadiths, args.expected_edges):
             raise ValueError(f"Selected Visual database has {counts} hadiths/edges; check the file and expected counts")
+        columns = {row[1] for row in db.execute("PRAGMA table_info(isnad_transmissionedge)")}
+        has_index = "chain_index" in columns
         visual = export_records(db, "visual", args.visual_edition)
     with closing(readonly_connection(args.kg)) as db:
         kg = export_records(db, "kg", PINNED["kg"][0], 1)
@@ -63,7 +65,7 @@ def setup(args):
         raise ValueError("Duplicate provider/edition/native IDs in input records")
     bundle = build_crosswalk(left, right)
     bundle["inputs"] = {
-        "visual": {"edition": args.visual_edition, "hadiths": counts[0], "edges": counts[1]},
+        "visual": {"edition": args.visual_edition, "hadiths": counts[0], "edges": counts[1], "chain_index_available": has_index},
         **{name: {"edition": PINNED[name][0], "sha256": PINNED[name][1]}
            for name in sources if name != "visual"},
     }
@@ -77,7 +79,7 @@ def setup(args):
         raise ValueError("Generated crosswalk exceeds the Django manifest size limit")
     output = args.output / "proposals.json"
     pending.rename(output)
-    print(json.dumps({"crosswalk": str(output.resolve()), **bundle["counts"]}))
+    print(json.dumps({"crosswalk": str(output.resolve()), "chain_index_available": has_index, **bundle["counts"]}))
 
 
 def validate_routes(routes):
@@ -120,6 +122,7 @@ def verify(args):
     original = get_json(root + "?chain=1")
     if str(original.get("hadith_number")) != "15" or not isinstance(original.get("edges"), list):
         raise ValueError("Cannot verify the original Visual Isnad graph for Bukhari 15")
+    print(f"PASS original graph; chain_index_available={original.get('chain_index_available')}")
     proposals = get_json(root + "sources/?page_size=400")
     if proposals.get("status") != "available":
         raise ValueError(f"Django source status: {proposals.get('status')}; restart with the generated crosswalk and correct database")
