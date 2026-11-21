@@ -197,6 +197,9 @@ class NarratorViewSet(viewsets.ModelViewSet):
         data = self.get_serializer(narrator).data
         if narrator._state.adding:
             data["profile_source"] = ibn_ulayya_supplement()["source"]
+            data["catalog_source_url"] = data["profile_source"]
+        elif narrator.pk == 20020:
+            data["catalog_source_url"] = "https://muslimscholars.info/manage.php?ID=20020&submit=scholar"
 
         def related_ids(field):
             ids = []
@@ -351,7 +354,11 @@ class HadithViewSet(viewsets.ModelViewSet):
             if (str(data.get("bookId")) != "1" or reference_changed
                     or propose_match(local_record(instance), live_record).status != "review_required"):
                 return Response({"error": "Live Knowledge Graph text or collection does not corroborate this proposal"}, status=409)
-            return Response({"proposal": candidate, "routes": data["visual_isnad_chains"]})
+            return Response({
+                "proposal": candidate,
+                "verification": "text_corroborated_routes_unreviewed",
+                "routes": data["visual_isnad_chains"],
+            })
         except UPSTREAM_ERRORS as error:
             return unavailable(error, "Hadith")
 

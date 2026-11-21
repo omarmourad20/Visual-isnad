@@ -107,3 +107,31 @@ class SourceAPITests(APITestCase):
         result = build_crosswalk([local_record(self.hadith), other], [self.candidate])
         self.assertEqual(result["counts"]["ambiguous_left"], 2)
         self.assertTrue(all(row["confidence"] == "ambiguous" for row in result["proposals"]))
+
+    def test_same_printed_reference_in_abu_dawud_cannot_preview_for_local_bukhari(self):
+        local = Hadith.objects.create(
+            id=832, hadith_number="832", book_title="Sahih al-Bukhari", arabic_matn="دعاء في الصلاة",
+        )
+        kg = HadithRecord("hadith_kg", "pinned", "17154", "صحيح البخاري", local.arabic_matn, "832")
+        bundle = build_crosswalk([local_record(local)], [kg])
+        self.settings_path.write_text(json.dumps(bundle), encoding="utf-8")
+        data = {"hadithId": 17154, "bookId": 4, "noInBook": 832, "matnClean": local.arabic_matn}
+        with patch("isnad.knowledge_graph.urlopen", return_value=BytesIO(json.dumps(data).encode())):
+            response = self.client.get("/api/v1/hadiths/832/source-routes/", {"source_key": "hadith_kg:pinned:17154"})
+        self.assertEqual(response.status_code, 409)
+
+    def test_provider_record_identity_must_agree_with_requested_id(self):
+        data = {"hadithId": 17154, "bookId": 1, "matnClean": self.candidate.arabic_matn}
+        with patch("isnad.knowledge_graph.urlopen", return_value=BytesIO(json.dumps(data).encode())):
+            self.assertEqual(self.client.get(self.routes, self.params).status_code, 502)
+
+    def test_ambiguous_proposal_stays_visible_without_route_preview(self):
+        duplicate = HadithRecord("hadith_kg", "pinned", "44", "صحيح البخاري", self.candidate.arabic_matn)
+        bundle = build_crosswalk([local_record(self.hadith)], [self.candidate, duplicate])
+        self.settings_path.write_text(json.dumps(bundle), encoding="utf-8")
+        rows = self.client.get(self.root + "sources/").json()["results"]
+        self.assertEqual(len(rows), 2)
+        self.assertTrue(all(row["confidence"] == "ambiguous" and not row["can_preview_routes"] for row in rows))
+        with patch("isnad.knowledge_graph.urlopen") as upstream:
+            self.assertEqual(self.client.get(self.routes, self.params).status_code, 404)
+        upstream.assert_not_called()

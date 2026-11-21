@@ -59,7 +59,8 @@ def source_candidates(hadith):
             )},
             "isnad_agreement": row.get("isnad_agreement", "unavailable"),
             "status": "review_required",
-            "can_preview_routes": row["provider"] == "hadith_kg" and row["right_id"].isascii()
+            "can_preview_routes": row["provider"] == "hadith_kg" and row["confidence"] != "ambiguous"
+            and row["ambiguity"] == "single_candidate" and row["right_id"].isascii()
             and row["right_id"].isdecimal() and len(row["right_id"]) <= 10,
         } for row in rows.values() if row["left_text_digest"] == digest]
         return ("stale" if rows and not candidates else "available"), candidates

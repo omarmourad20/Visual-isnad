@@ -41,7 +41,22 @@ test('keeps evaluation order, count, original Arabic wording and KG attribution'
   ]
   const html = profile({ aqwal }, 'knowledge_graph')
   assert.match(html, /Scholarly evaluations \(2\)/)
-  assert.equal(html.match(/Hadith Knowledge Graph/g)?.length, 2)
+  assert.equal(html.match(/<small>Hadith Knowledge Graph<\/small>/g)?.length, 2)
   const statements = [...html.matchAll(/<blockquote class="narrator-source-text" lang="ar" dir="rtl">(.*?)<\/blockquote>/g)]
   assert.deepEqual(statements.map(([, quote]) => quote), aqwal.map(({ qawl }) => qawl))
+})
+
+test('separates KG route relationships and catalog relationships', () => {
+  const related = [{ id: 5, name: 'Teacher', arabic_name: 'شيخ' }]
+  const kg = profile({ teachers: related, students: related }, 'knowledge_graph')
+  const local = profile({
+    teachers: related, students: related, transmission_students: related,
+    catalog_source_url: 'https://muslimscholars.info/manage.php?ID=20020',
+  })
+  assert.match(kg, /Profile source: Hadith Knowledge Graph/)
+  assert.match(kg, /Teachers in KG routes \(1\)/)
+  assert.match(kg, /Students in KG routes \(1\)/)
+  assert.match(local, /Profile source: Visual Isnad catalog/)
+  assert.match(local, /Open catalog entry/)
+  assert.match(local, /Narrators linked in imported Bukhari chains \(1\)/)
 })

@@ -28,6 +28,9 @@ def fetch_record(kind, native_id):
     data = json.loads(body)
     if not isinstance(data, dict):
         raise ValueError("Expected a Knowledge Graph object")
+    identity_field = "hadithId" if kind == "hadith" else "rawiId"
+    if identity_field in data and str(data[identity_field]) != str(native_id):
+        raise ValueError("Knowledge Graph returned a different record")
     if kind == "hadith":
         chains = [convert_kg_chain(sanad) for sanad in data.get("sanads", [])]
         if len({chain["sanad_id"] for chain in chains}) != len(chains):
