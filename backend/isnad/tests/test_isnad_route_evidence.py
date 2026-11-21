@@ -4,7 +4,7 @@ from django.test import SimpleTestCase
 
 from isnad.reviewed_routes import (
     apply_path_identity_review, correct_reviewed_legacy_route, describe_reviewed_routes,
-    route_evidence, withheld_route_reason,
+    recorded_identity_flags, route_evidence, withheld_route_reason,
 )
 
 
@@ -97,3 +97,16 @@ class IsnadRouteEvidenceTests(SimpleTestCase):
         raw[-1]["teacher"] = 18
         hadith.arabic_isnad += " كلام آخر"
         self.assertEqual(describe_reviewed_routes(hadith, raw, raw), [])
+
+    def test_bukhari_7000_flags_fragments_without_reviewing_or_changing_edges(self):
+        hadith, raw = self.record(7000)
+        original = [edge.copy() for edge in raw]
+        flags = recorded_identity_flags(hadith, raw)
+        self.assertEqual(set(flags), {"803739", "803740", "803741", "803742", "803743"})
+        self.assertEqual(describe_reviewed_routes(hadith, raw, raw), [])
+        self.assertEqual(raw, original)
+        raw[-1]["teacher"] = 6
+        self.assertEqual(recorded_identity_flags(hadith, raw), {})
+        self.assertEqual(recorded_identity_flags(hadith, original), flags)
+        hadith.arabic_isnad += " نص مختلف"
+        self.assertEqual(recorded_identity_flags(hadith, original), {})

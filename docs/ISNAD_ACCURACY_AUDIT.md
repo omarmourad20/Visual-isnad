@@ -133,3 +133,61 @@ The viewer now uses a sequence-ordered edge inspector for cyclic segments
 with exact endpoint columns and per-edge flags. Unknown identities have
 no era assignment, and linear segments with unresolved identities
 use an unbanded graph. No identities or stored edge rows are rewritten.
+
+### Full-snapshot extraction follow-up
+
+The scanner replayed the extractor over every Arabic full-text record in
+both read-only cloud snapshots. These counts measure snapshot records and
+stored identities, rather than distinct hadiths across both snapshots.
+
+| Snapshot | Hadith records inspected | Unmatched IDs | Hadiths with an unmatched endpoint | IDs flagged by a clause heuristic | Hadiths linked to flagged IDs |
+|---|---:|---:|---:|---:|---:|
+| Legacy | 7,252 | 3,958 | 3,795 | 194 | 226 |
+| Indexed | 7,277 | 8,149 | 4,243 | 151 | 133 |
+
+The heuristic searched unmatched labels for alternatives and reporting
+markers. These counts are review queues. Five of the legacy labels were
+confirmed as fragments in the 7000 Arabic text, and the remaining candidates
+were not individually verified. The verified correction is to how those
+labels are interpreted. No stored identity was reassigned.
+
+The first attempted parser rule was too broad and removed Anas from Bukhari
+500. The final narrow rule changed only 7000 and 7046 in each snapshot. It
+recognizes the start of the anonymous man's report and retains Ibn ʿAbbas as
+the explicitly named subject of `كان يحدث` in both openings. In 7000 this
+prevents the trailing parallel attributions from becoming one chain. In
+7046 it keeps the previously missed Ibn ʿAbbas attribution. Explicit
+Prophet transmission terms before a following route switch are preserved.
+The audit did not establish canonical identities for every ambiguous name.
+
+The source-fragment annotations bind to Bukhari 7000's source URL, normalized
+opening text, and complete ordered legacy edge signature. The graph shows
+every stored edge as a separate directed pairing. The five confirmed
+fragments appear as non-person cards, their original labels remain in the
+optional import inspector, and all five links touching ID 1 are labeled
+unverified. Linear graphs remain available. Era bands require explicit
+catalog roles in compatible order, and Madar is never inferred.
+
+[Before, edge inspector](bukhari-7000-verification/before.png) ·
+[After, recorded evidence graph](bukhari-7000-verification/after.png)
+
+### Release and security notes
+
+The configured Knowledge Graph host supplies profile data. The frontend had
+accepted token-like fields from any JSON response, including that proxy.
+It now accepts CSRF updates only from auth endpoints and editor tokens only
+from login. The Django API keeps staff-only writes, signed editor tokens,
+explicit CORS origins, and request throttling. Existing signed tokens are
+time-limited and logout clears browser state. Server-side revocation before
+expiry is outside this change. The production JavaScript dependency audit
+reported zero advisories.
+
+The repository does not establish whether Render auto-deploys from main.
+If it does, the existing build script runs migrations and superuser setup
+against the configured database. No hosting settings, schema, or production
+data were changed. Confirm the deployment trigger before merging.
+
+A simulated Render configuration also reported Django deployment check
+`mail.E001` because the default mailer uses the console backend. This is
+an existing configuration issue. Production mail settings were not
+accessible and were not altered.

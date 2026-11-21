@@ -148,3 +148,4 @@
 # These audit screenshots are already stored as ordinary Git blobs.
 docs/isnad-audit-screenshots/*.png -filter -diff -merge -text
 docs/isnad-viewing-screenshots/*.png -filter -diff -merge -text
+docs/bukhari-7000-verification/*.png -filter -diff -merge -text

@@ -91,6 +91,7 @@ type HadithRecord = {
   chapter_title_arabic?: string
   arabic_matn?: string
   withheld_route_reason?: string | null
+  recorded_identity_flags?: Record<number, string>
   arabic_isnad?: string
   arabic_full?: string
   english_matn?: string
@@ -154,29 +155,12 @@ const GENERATION_RANK: Record<Generation, number> = {
   scholar: 3,
 }
 
-function deathYearAh(person: Narrator) {
-  const match = /(^|\s)(\d+)\s*AH\b/i.exec(person.record.death_display ?? '')
-  if (match) return Number(match[2])
-  const year = person.record.death_year
-  return !person.record.death_display && year != null && year > 0 ? year : null
-}
-
-function generationOf(person: Narrator, index: number, count: number): Generation {
+function generationOf(person: Narrator): Generation | null {
   if (person.role === 'Prophet' || person.id === 1) return 'prophet'
   if (person.role === 'Companion') return 'companion'
-  if (person.role === 'Compiler' || person.id === 30001) return 'scholar'
   if (person.role === 'Successor') return 'successor'
-  const death = deathYearAh(person)
-  if (death != null) {
-    if (death <= 50) return 'companion'
-    if (death <= 180) return 'successor'
-    return 'scholar'
-  }
-  if (index >= count - 1) return 'scholar'
-  const share = index / Math.max(1, count - 1)
-  if (share < 0.28) return 'companion'
-  if (share < 0.68) return 'successor'
-  return 'scholar'
+  if (person.role === 'Compiler' || person.id === 30001) return 'scholar'
+  return null
 }
 
 function cleanPlace(value?: string) {
@@ -301,11 +285,11 @@ async function fetchJson(path: string, init?: RequestInit) {
   }
   if (response.status === 204) return null
   const data = await response.json()
-  if (data && typeof data.csrfToken === 'string' && data.csrfToken) {
+  if (path.startsWith('/auth/') && data && typeof data.csrfToken === 'string' && data.csrfToken) {
     sessionCsrf = data.csrfToken
     delete data.csrfToken
   }
-  if (data && typeof data.token === 'string' && data.token) {
+  if (path === '/auth/login/' && data && typeof data.token === 'string' && data.token) {
     storeEditorToken(data.token)
     delete data.token
   }
@@ -349,21 +333,16 @@ function layoutChain(people: Narrator[], showEraBands: boolean): ChainLayout {
     return { positions: [], bands: [], height: 620 }
   }
 
-  if (!showEraBands) {
+  const tiers = people.map(generationOf)
+  const supportedTiers = tiers.every((tier): tier is Generation => tier !== null)
+    && tiers.every((tier, index) => index === 0 || GENERATION_RANK[tiers[index - 1]!] <= GENERATION_RANK[tier!])
+  if (!showEraBands || !supportedTiers) {
     return {
       positions: people.map((_, index) => ({ x: 345, y: BAND_PAD + index * (NODE_HEIGHT + NODE_GAP) })),
       bands: [],
       height: Math.max(620, count * (NODE_HEIGHT + NODE_GAP) + BAND_PAD),
     }
   }
-
-  let minRank = 0
-  const tiers = people.map((person, index) => {
-    const guessed = generationOf(person, index, count)
-    const rank = Math.max(minRank, GENERATION_RANK[guessed])
-    minRank = rank
-    return TIER_ORDER[rank]
-  })
 
   const grouped = new Map<Generation, number[]>()
   TIER_ORDER.forEach((tier) => grouped.set(tier, []))
@@ -428,7 +407,7 @@ const ROUTE_STATUS: Record<Route['status'], string> = {
 
 export function IsnadViewer({
   chains, chainIndex, onSelectChain, narrators,
-  hadithNumber, waiting, emptyReason, selectedId, onSelectNarrator,
+  hadithNumber, waiting, emptyReason, selectedId, onSelectNarrator, identityFlags = {},
 }: {
   chains: Route[]
   chainIndex: number
@@ -439,17 +418,21 @@ export function IsnadViewer({
   emptyReason?: string
   selectedId: number | null
   onSelectNarrator: (id: number) => void
+  identityFlags?: Record<number, string>
 }) {
   const [tracePath, setTracePath] = useState(false)
   const route = chains[chainIndex]
   const labelFor = (route: Route, index: number) =>
     `${route.status === 'unresolved' ? (route.edges.length === 1 ? 'Recorded edge' : 'Recorded segment') : 'Isnad'} ${index + 1}`
   const repeatedNarrator = route && graphNarratorIds(route.edges).length < route.edges.length + 1
-  const graph = route && (repeatedNarrator ? (
-    <RecordedEdgeInspector
+  const evidenceGraph = route && (repeatedNarrator ||
+    route.edges.some(edge => identityFlags[edge.student] || identityFlags[edge.teacher]))
+  const graph = route && (evidenceGraph ? (
+    <RecordedEvidenceGraph
       edges={route.edges}
       label={labelFor(route, chainIndex)}
       narrators={narrators}
+      identityFlags={identityFlags}
       onSelectNarrator={onSelectNarrator}
     />
   ) : (
@@ -487,7 +470,7 @@ export function IsnadViewer({
           {route?.status === 'unresolved' && (
             <p className="isnad-empty" role="status">Showing recorded transmissions. Their place in an isnad is unverified.</p>
           )}
-          {route?.status !== 'unresolved' && !repeatedNarrator && <div className="graph-actions isnad-actions" aria-label="Graph display options" role="group">
+          {route?.status !== 'unresolved' && !evidenceGraph && <div className="graph-actions isnad-actions" aria-label="Graph display options" role="group">
             <button type="button" aria-pressed={tracePath} className={tracePath ? 'active' : ''} onClick={() => setTracePath(!tracePath)}><Icon name="branch" size={14} /> Trace path</button>
           </div>}
           {graph}
@@ -497,9 +480,65 @@ export function IsnadViewer({
   )
 }
 
-function RecordedEdgeInspector({ edges, label, narrators, onSelectNarrator }: {
+function RecordedEvidenceGraph({ edges, label, narrators, identityFlags, onSelectNarrator }: {
   edges: EdgeRecord[]
   label: string
+  narrators: Narrator[]
+  identityFlags: Record<number, string>
+  onSelectNarrator: (id: number) => void
+}) {
+  const people = new Map(narrators.map(narrator => [narrator.id, narrator]))
+  const rows = describeRecordedEdges(edges)
+  const card = (id: number) => {
+    const fragment = identityFlags[id]
+    if (fragment) return <div className="recorded-node fragment"><strong>Source fragment</strong><small>{fragment} · ID {id}</small></div>
+    const narrator = people.get(id)
+    if (!narrator) return <div className="recorded-node fragment">Unknown identity · ID {id}</div>
+    return (
+      <button type="button" className="recorded-node" onClick={() => onSelectNarrator(id)}>
+        <strong dir="auto">{narrator.name}</strong>
+        {narrator.arabic !== narrator.name && <bdi lang="ar">{narrator.arabic}</bdi>}
+        <small>ID {id}{isUnresolvedNarrator(id, narrator.grade) ? ' · Unknown / unresolved' : ' · Catalog label'}</small>
+      </button>
+    )
+  }
+
+  return (
+    <section className="isnad-graph" aria-label={`${label}: unverified evidence graph`}>
+      <header className="isnad-graph-heading">
+        <h3>{label}</h3>
+        <span className="isnad-count">{graphNarratorIds(edges).length} recorded endpoint IDs · {edges.length} recorded edges</span>
+        <span className="isnad-status isnad-status-unresolved">Unresolved transmission</span>
+      </header>
+      <p className="recorded-graph-note">Each arrow is one imported teacher-to-student edge. Cards may repeat. These edges do not establish a continuous isnad.</p>
+      <ol className="recorded-graph">
+        {rows.map(({ edge, cycle, repeated }) => (
+          <li key={edge.id} data-edge-id={edge.id} data-teacher-id={edge.teacher} data-student-id={edge.student}>
+            <small className="recorded-edge-caption">
+              Edge {edge.id}{cycle && ' · Cycle'}{repeated && ' · Repeated pair'}
+              {(edge.teacher === 1 || edge.student === 1) && ' · Prophet endpoint unverified'}
+            </small>
+            <div className="recorded-link">
+              {card(edge.teacher)}
+              <span className="recorded-arrow" role="img" aria-label="Recorded direction: teacher to student">
+                <svg viewBox="0 0 44 20" aria-hidden="true"><path d="M2 10h38" strokeDasharray="4 3" /><path d="m34 4 6 6-6 6" /></svg>
+              </span>
+              {card(edge.student)}
+            </div>
+          </li>
+        ))}
+      </ol>
+      <details className="isnad-evidence">
+        <summary>Inspect original import evidence</summary>
+        <RecordedEdgeInspector edges={edges} narrators={narrators} identityFlags={identityFlags} onSelectNarrator={onSelectNarrator} />
+      </details>
+    </section>
+  )
+}
+
+function RecordedEdgeInspector({ edges, narrators, identityFlags, onSelectNarrator }: {
+  edges: EdgeRecord[]
+  identityFlags: Record<number, string>
   narrators: Narrator[]
   onSelectNarrator: (id: number) => void
 }) {
@@ -509,7 +548,7 @@ function RecordedEdgeInspector({ edges, label, narrators, onSelectNarrator }: {
     const unresolved = !narrator || isUnresolvedNarrator(id, narrator.grade)
     return (
       <>
-        {narrator ? (
+        {narrator && identityFlags[id] ? <bdi lang="ar">{narrator.arabic || narrator.name}</bdi> : narrator ? (
           <button className="recorded-narrator" type="button" onClick={() => onSelectNarrator(id)}>
             <bdi>{narrator.name}</bdi>
             {narrator.arabic && narrator.arabic !== narrator.name && <bdi lang="ar">{narrator.arabic}</bdi>}
@@ -521,13 +560,8 @@ function RecordedEdgeInspector({ edges, label, narrators, onSelectNarrator }: {
   }
 
   return (
-    <section className="isnad-graph recorded-inspector" aria-label={`${label}: recorded edge inspection`}>
-      <header className="isnad-graph-heading">
-        <h3>{label}</h3>
-        <span className="isnad-count">{graphNarratorIds(edges).length} narrator IDs · {edges.length} recorded edges</span>
-        <span className="isnad-status isnad-status-unresolved">Unresolved transmission</span>
-      </header>
-      <p>This segment revisits narrators. Each row shows one teacher-to-student relationship in import order. Any endpoint correction is attributed in the row. A cycle, repeated pair, or Prophet endpoint shown here is unverified.</p>
+    <section className="recorded-inspector" aria-label="Recorded edge inspection">
+      <p>Original labels may contain source fragments. Cycles, repeated pairs, and Prophet endpoints are unverified.</p>
       <div className="recorded-edge-scroll" tabIndex={0} role="region" aria-label="Recorded relationships">
         <table>
           <thead>
@@ -535,7 +569,7 @@ function RecordedEdgeInspector({ edges, label, narrators, onSelectNarrator }: {
           </thead>
           <tbody>
             {describeRecordedEdges(edges).map(({ edge, cycle, repeated }) => (
-              <tr key={edge.id} data-edge-id={edge.id} data-teacher-id={edge.teacher} data-student-id={edge.student}>
+              <tr key={edge.id}>
                 <th scope="row">{edge.sequence}<small>Edge {edge.id}</small></th>
                 <td>{endpoint(edge.teacher)}</td>
                 <td>{endpoint(edge.student)}</td>
@@ -924,14 +958,14 @@ function Explorer({ onHome }: { onHome: () => void }) {
 
   const hadithRequest = useRef(0)
 
-  const applyChain = (payload: { narrators?: unknown; edges?: unknown; reviewed_routes?: RouteEvidence[]; withheld_route_reason?: string | null }) => {
+  const applyChain = (payload: { narrators?: unknown; edges?: unknown; reviewed_routes?: RouteEvidence[]; withheld_route_reason?: string | null; recorded_identity_flags?: Record<number, string> }) => {
     const mapped = unwrapList<NarratorRecord>(payload?.narrators).map(mapNarrator)
     const chainEdges = unwrapList<EdgeRecord>(payload?.edges)
     const grouped = payload.withheld_route_reason ? [] : groupChains(chainEdges, payload.reviewed_routes)
     setNarrators(mapped)
     setChains(grouped)
     setChainIndex(0)
-    const ordered = graphNarratorIds(grouped[0]?.edges ?? [])
+    const ordered = graphNarratorIds(grouped[0]?.edges ?? []).filter(id => !payload.recorded_identity_flags?.[id])
     setSelectedId(ordered[Math.floor(ordered.length / 2)] ?? null)
   }
 
@@ -1004,6 +1038,7 @@ function Explorer({ onHome }: { onHome: () => void }) {
             edges: boot.edges || boot.hadith.edges,
             reviewed_routes: boot.hadith.reviewed_routes,
             withheld_route_reason: boot.hadith.withheld_route_reason,
+            recorded_identity_flags: boot.hadith.recorded_identity_flags,
           })
           setLoadError('')
         }
@@ -1083,13 +1118,13 @@ function Explorer({ onHome }: { onHome: () => void }) {
     return () => window.removeEventListener('keydown', onKey)
   }, [hadithReaderOpen, inspectedNarrator, catalogOpen])
 
-  const chainIds = graphNarratorIds(chains[chainIndex]?.edges ?? [])
+  const chainIds = graphNarratorIds(chains[chainIndex]?.edges ?? []).filter(id => !currentHadith?.recorded_identity_flags?.[id])
   const totalHadiths = books.reduce((sum, book) => sum + book.count, 0)
   const selectedBookNumber = Number(currentHadith?.in_book_reference?.match(/Book\s+(\d+)/i)?.[1] || expandedBook || 1)
   const activeBook = books.find((book) => book.number === selectedBookNumber)
   const selectChain = (index: number) => {
     setChainIndex(index)
-    const ordered = graphNarratorIds(chains[index]?.edges ?? [])
+    const ordered = graphNarratorIds(chains[index]?.edges ?? []).filter(id => !currentHadith?.recorded_identity_flags?.[id])
     setSelectedId(ordered[Math.floor(ordered.length / 2)] ?? null)
   }
   const selectedSummary = narrators.find((item) => item.id === selectedId) ?? narrators.find(item => item.id === chainIds[0])
@@ -1500,6 +1535,7 @@ function Explorer({ onHome }: { onHome: () => void }) {
             emptyReason={currentHadith?.withheld_route_reason ?? (loadError || undefined)}
             selectedId={selectedId}
             onSelectNarrator={selectNarrator}
+            identityFlags={currentHadith?.recorded_identity_flags}
           />
         </main>
 

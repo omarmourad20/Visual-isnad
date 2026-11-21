@@ -90,7 +90,7 @@ test('profile count cards and the source proposal accordion are absent', () => {
   assert.doesNotMatch(app, /Direct teachers|Direct students|In this chain|External source proposals/)
 })
 
-test('Bukhari 7000 inspects all original cyclic edges without assigning eras', () => {
+test('Bukhari 7000 displays original directed edges and keeps fragments out of narrator cards', () => {
   const pairs = [
     [30001, 30020],
     [30020, 36033],
@@ -116,18 +116,22 @@ test('Bukhari 7000 inspects all original cyclic edges without assigning eras', (
   }))
   const ids = new Set(pairs.flat())
   const records = [...ids].map(id => ({
-    ...narrators[0], id, name: `Record ${id}`, grade: id >= 800000 ? 'Unmatched isnad name' : '',
+    ...narrators[0], id, name: id >= 800000 ? 'Narrative text fixture' : `Record ${id}`, arabic: '', grade: id >= 800000 ? 'Unmatched isnad name' : '',
   }))
-  const html = render(groupChains(edges), { hadithNumber: '7000', narrators: records })
-  assert.match(html, /15 narrator IDs · 18 recorded edges/)
-  assert.match(html, /Unknown \/ unresolved/)
+  const html = render(groupChains(edges), { hadithNumber: '7000', narrators: records, identityFlags: Object.fromEntries([...ids].filter(id => id >= 800000).map(id => [id, 'Confirmed source fragment'])) })
+  assert.match(html, /15 recorded endpoint IDs · 18 recorded edges/)
+  assert.match(html, /Source fragment/)
   assert.match(html, /Cycle/)
-  assert.equal((html.match(/Repeated teacher–student pair/g) ?? []).length, 2)
-  assert.equal((html.match(/Prophet endpoint · unverified/g) ?? []).length, 5)
+  assert.equal((html.match(/ · Repeated pair/g) ?? []).length, 2)
+  assert.equal((html.match(/Recorded direction: teacher to student/g) ?? []).length, 18)
+  assert.match(html, /<details class="isnad-evidence"><summary>Inspect original import evidence/)
+  assert.equal((html.match(/Prophet endpoint unverified/g) ?? []).length, 5)
   assert.deepEqual(renderedEdges(html), edges.map(e => e.id))
   assert.deepEqual([...html.matchAll(/data-teacher-id="(\d+)" data-student-id="(\d+)"/g)]
     .map(([, teacher, student]) => [Number(student), Number(teacher)]), pairs)
-  assert.doesNotMatch(html, /network-svg|tier-bands|Source reviewed/)
+  const primary = html.split('<details')[0]
+  assert.doesNotMatch(primary, /Narrative text fixture|tier-bands|Source reviewed/)
+  assert.match(html, /Narrative text fixture/)
 })
 
 test('a linear segment with an unmatched narrator draws its edges without era bands', () => {

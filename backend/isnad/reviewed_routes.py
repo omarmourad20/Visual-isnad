@@ -161,7 +161,7 @@ def describe_reviewed_routes(hadith, raw_edges, display_edges):
                      "source_url": hadith.reference_url,
                      "note": earlier["evidence"] + ". Tail attribution and route completeness remain outside that review."}]
         return []
-    if review.get("withheld_reason"):
+    if not review.get("lengths"):
         return []
     spans = []
     if legacy_signature_matches(raw_edges, review):
@@ -198,3 +198,10 @@ def withheld_route_reason(hadith, raw_edges):
     if review and review.get("withheld_reason") and legacy_signature_matches(raw_edges, review):
         return review["withheld_reason"]
     return None
+
+def recorded_identity_flags(hadith, raw_edges):
+    """Annotate confirmed text fragments without replacing either endpoint."""
+    review = matching_route_evidence(hadith)
+    if review and review.get("identity_flags") and legacy_signature_matches(raw_edges, review):
+        return review["identity_flags"]
+    return {}

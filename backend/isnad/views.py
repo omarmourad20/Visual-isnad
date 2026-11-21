@@ -26,7 +26,7 @@ from .models import Hadith, Narrator, TransmissionEdge
 from .edge_schema import has_chain_index
 from .reviewed_routes import (
     apply_path_identity_review, correct_reviewed_legacy_route, describe_reviewed_routes,
-    ibn_ulayya_supplement, route_evidence, supplemental_profile, withheld_route_reason,
+    ibn_ulayya_supplement, recorded_identity_flags, route_evidence, supplemental_profile, withheld_route_reason,
 )
 from .source_api import source_candidates
 from .serializers import (
@@ -107,6 +107,7 @@ def chain_payload(hadith: Hadith) -> dict:
         "edges": display_edges,
         "withheld_route_reason": withheld_route_reason(hadith, raw_edges),
         "reviewed_routes": describe_reviewed_routes(hadith, raw_edges, display_edges),
+        "recorded_identity_flags": recorded_identity_flags(hadith, raw_edges),
         "chain_index_available": indexed_schema,
         "chain_boundaries_recorded": indexed_schema and all(edge.chain_index is not None for edge in edges),
     }
