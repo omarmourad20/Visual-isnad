@@ -6,8 +6,6 @@ export type NarratorReference = {
   arabic_name: string | null
 }
 
-export type BukhariHadithReference = { id: number; hadith_number: string; reference_url: string; edge_id?: number }
-
 export type NarratorRecord = NarratorReference & {
   aqwal?: { alemId: number; alem: string; qawl: string }[]
   aliases?: string
@@ -32,7 +30,6 @@ export type NarratorRecord = NarratorReference & {
   teachers?: NarratorReference[]
   students?: NarratorReference[]
   transmission_students?: NarratorReference[]
-  reviewed_bukhari_hadiths?: BukhariHadithReference[]
 }
 
 export function recordedText(value?: string | null) {
@@ -106,13 +103,12 @@ function NarratorRelationships({ label, entries, onOpen }: {
   )
 }
 
-export default function NarratorProfile({ record, source, status, onOpen, onRetry, onOpenHadith }: {
+export default function NarratorProfile({ record, source, status, onOpen, onRetry }: {
   record: NarratorRecord
   source: 'local' | 'knowledge_graph'
   status: 'loading' | 'loaded' | 'error'
   onOpen: (reference: NarratorReference) => void
   onRetry: () => void
-  onOpenHadith?: (hadith: BukhariHadithReference) => void
 }) {
   const linkedProfile = record.knowledge_graph_profile
   const fields = [
@@ -201,21 +197,6 @@ export default function NarratorProfile({ record, source, status, onOpen, onRetr
           )}
           {source === 'knowledge_graph' && !record.aqwal?.length && (
             <section><h3>Scholarly evaluations</h3><p>No evaluations listed by this source.</p></section>
-          )}
-          {source === 'local' && record.reviewed_bukhari_hadiths && (
-            <section>
-              <h3>Source-reviewed Bukhari transmissions</h3>
-              {record.reviewed_bukhari_hadiths.length ? (
-                <ul className="narrator-relations">
-                  {record.reviewed_bukhari_hadiths.map(hadith => (
-                    <li key={hadith.id}>
-                      <button type="button" onClick={() => onOpenHadith?.(hadith)}>Open Bukhari {hadith.hadith_number}</button>
-                      {' · '}<a href={hadith.reference_url}>Source text</a>
-                    </li>
-                  ))}
-                </ul>
-              ) : <p>No source-reviewed hadiths linked for this narrator yet.</p>}
-            </section>
           )}
           <section aria-label="Narrator relationships">
             <p>{source === 'knowledge_graph'

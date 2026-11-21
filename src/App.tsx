@@ -470,7 +470,7 @@ function Explorer({ onHome }: { onHome: () => void }) {
     const fromKnowledgeGraph = id >= KG_NARRATOR_OFFSET
     const path = fromKnowledgeGraph
       ? `/knowledge-graph/rawis/${id - KG_NARRATOR_OFFSET}/`
-      : `/narrators/${id}/?evidence=1`
+      : `/narrators/${id}/`
     void fetchJson(path)
       .then(raw => {
         const detail = fromKnowledgeGraph ? mapKnowledgeGraphNarrator(id, raw) : mapNarrator(raw)
@@ -484,15 +484,14 @@ function Explorer({ onHome }: { onHome: () => void }) {
 
   const hadithRequest = useRef(0)
 
-  const applyChain = (payload: { narrators?: unknown; edges?: unknown; reviewed_routes?: RouteEvidence[]; withheld_route_reason?: string | null }, focusEdgeId?: number) => {
+  const applyChain = (payload: { narrators?: unknown; edges?: unknown; reviewed_routes?: RouteEvidence[]; withheld_route_reason?: string | null }) => {
     const mapped = unwrapList<NarratorRecord>(payload?.narrators).map(mapNarrator)
     const chainEdges = unwrapList<EdgeRecord>(payload?.edges)
     const grouped = payload.withheld_route_reason ? [] : groupChains(chainEdges, payload.reviewed_routes)
     setNarrators(mapped)
     setChains(grouped)
-    const index = Math.max(0, grouped.findIndex(route => route.edges.some(edge => edge.id === focusEdgeId)))
-    setChainIndex(index)
-    const ordered = orderChain(grouped[index]?.edges ?? [])
+    setChainIndex(0)
+    const ordered = orderChain(grouped[0]?.edges ?? [])
     setSelectedId(ordered[Math.floor(ordered.length / 2)] ?? null)
     setSelectedEdge(null)
   }
@@ -529,7 +528,7 @@ function Explorer({ onHome }: { onHome: () => void }) {
     return hadiths
   }
 
-  const selectHadith = async (hadith: Pick<HadithRecord, 'id' | 'hadith_number'> & { edge_id?: number }, bookNumber?: number) => {
+  const selectHadith = async (hadith: Pick<HadithRecord, 'id' | 'hadith_number'>, bookNumber?: number) => {
     const request = ++hadithRequest.current
     setLoadError('')
     setHadithReaderOpen(false)
@@ -547,7 +546,7 @@ function Explorer({ onHome }: { onHome: () => void }) {
       const detail = await fetchJson(`/hadiths/${encodeURIComponent(hadith.hadith_number)}/?chain=1`)
       if (request !== hadithRequest.current) return
       setCurrentHadith(detail)
-      applyChain(detail, hadith.edge_id)
+      applyChain(detail)
       setLoadError('')
     } catch (error) {
       if (request !== hadithRequest.current) return
@@ -835,7 +834,6 @@ function Explorer({ onHome }: { onHome: () => void }) {
         teachers: selected.record.teachers,
         students: selected.record.students,
         transmission_students: selected.record.transmission_students,
-        reviewed_bukhari_hadiths: selected.record.reviewed_bukhari_hadiths,
         catalog_source_url: selected.record.catalog_source_url,
         knowledge_graph_profile: selected.record.knowledge_graph_profile,
       })
@@ -1451,7 +1449,6 @@ function Explorer({ onHome }: { onHome: () => void }) {
             source={selected.id >= KG_NARRATOR_OFFSET ? 'knowledge_graph' : 'local'}
             status={selectedDetail === 'error' ? 'error' : selectedDetail ? 'loaded' : 'loading'}
             onOpen={openRelatedNarrator}
-            onOpenHadith={(hadith) => void selectHadith(hadith)}
             onRetry={() => retryNarratorDetails(selected.id)}
           />
           {editor.can_edit_biographies && !selected.record.profile_source && selected.id < KG_NARRATOR_OFFSET && selectedDetail && selectedDetail !== 'error' && (
@@ -1532,7 +1529,6 @@ function Explorer({ onHome }: { onHome: () => void }) {
               source={inspected.id >= KG_NARRATOR_OFFSET ? 'knowledge_graph' : 'local'}
               status={inspectedDetail === 'error' ? 'error' : inspectedDetail ? 'loaded' : 'loading'}
               onOpen={openRelatedNarrator}
-              onOpenHadith={(hadith) => void selectHadith(hadith)}
               onRetry={() => retryNarratorDetails(inspected.id)}
             />
           </article>

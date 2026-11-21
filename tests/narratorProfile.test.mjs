@@ -64,12 +64,12 @@ test('separates KG route relationships and catalog relationships', () => {
   assert.match(local, /Students listed in imported Bukhari edges \(unreviewed\) \(1\)/)
 })
 
-test('provides source links for reviewed Bukhari records and labels Hijri dates', () => {
+test('labels Hijri dates and omits reviewed transmission links when present in the API response', () => {
   const html = profile({ birth_year: 83, death_year: 160, reviewed_bukhari_hadiths: [
     { id: 1067, hadith_number: '1067', reference_url: 'https://sunnah.com/bukhari:1067' },
   ] })
   assert.match(html, /83 AH/)
   assert.match(html, /160 AH/)
-  assert.match(html, /Open Bukhari 1067/)
-  assert.match(html, /https:\/\/sunnah.com\/bukhari:1067/)
+  assert.doesNotMatch(html, /Source-reviewed Bukhari transmissions|Open Bukhari|Source text/)
+  assert.doesNotMatch(html, /https:\/\/sunnah.com\/bukhari:1067/)
 })
