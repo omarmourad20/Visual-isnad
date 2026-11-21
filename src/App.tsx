@@ -1062,7 +1062,6 @@ function Explorer({ onHome }: { onHome: () => void }) {
         ...raw,
         teachers: selected.record.teachers,
         students: selected.record.students,
-        transmission_students: selected.record.transmission_students,
         catalog_source_url: selected.record.catalog_source_url,
         knowledge_graph_profile: selected.record.knowledge_graph_profile,
       })

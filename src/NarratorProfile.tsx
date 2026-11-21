@@ -29,7 +29,6 @@ export type NarratorRecord = NarratorReference & {
   students_inds?: string
   teachers?: NarratorReference[]
   students?: NarratorReference[]
-  transmission_students?: NarratorReference[]
 }
 
 export function recordedText(value?: string | null) {
@@ -205,9 +204,6 @@ export default function NarratorProfile({ record, source, status, onOpen, onRetr
               : 'Teachers and students come from the narrator catalog.'}</p>
             <NarratorRelationships label={source === 'knowledge_graph' ? 'Teachers in KG routes' : 'Teachers'} entries={relationshipList(record.teachers, record.teachers_inds)} onOpen={onOpen} />
             <NarratorRelationships label={source === 'knowledge_graph' ? 'Students in KG routes' : 'Students'} entries={relationshipList(record.students, record.students_inds)} onOpen={onOpen} />
-            {!!record.transmission_students?.length && (
-              <NarratorRelationships label="Students listed in imported Bukhari edges (unreviewed)" entries={record.transmission_students} onOpen={onOpen} />
-            )}
           </section>
         </>
       )}

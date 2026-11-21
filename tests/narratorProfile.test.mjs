@@ -50,7 +50,8 @@ test('separates KG route relationships and catalog relationships', () => {
   const related = [{ id: 5, name: 'Teacher', arabic_name: 'شيخ' }]
   const kg = profile({ teachers: related, students: related }, 'knowledge_graph')
   const local = profile({
-    teachers: related, students: related, transmission_students: related,
+    teachers: related, students: related,
+    transmission_students: [{ id: 9, name: 'Imported-only student', arabic_name: null }],
     knowledge_graph_profile: { id: 1003795, name: null, arabic_name: 'شعبة بن الحجاج' },
     catalog_source_url: 'https://muslimscholars.info/manage.php?ID=20020',
   })
@@ -60,7 +61,9 @@ test('separates KG route relationships and catalog relationships', () => {
   assert.doesNotMatch(local, /Profile source: Visual Isnad catalog|Open catalog entry/)
   assert.match(local, /Open Hadith Knowledge Graph profile/)
   assert.match(kg, /general Knowledge Graph observations/)
-  assert.match(local, /Students listed in imported Bukhari edges \(unreviewed\) \(1\)/)
+  assert.match(local, /Teachers \(1\)/)
+  assert.match(local, /Students \(1\)/)
+  assert.doesNotMatch(local, /(?:Teachers|Students) listed in imported Bukhari edges|Imported-only student/)
 })
 
 test('labels Hijri dates and omits reviewed transmission links when present in the API response', () => {
