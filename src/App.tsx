@@ -429,7 +429,6 @@ export function IsnadViewer({
   onSelectNarrator: (id: number) => void
 }) {
   const [tracePath, setTracePath] = useState(false)
-  const [highlightMadar, setHighlightMadar] = useState(false)
   const route = chains[chainIndex]
   const labelFor = (route: Route, index: number) =>
     `${route.status === 'unresolved' ? (route.edges.length === 1 ? 'Recorded edge' : 'Recorded segment') : 'Isnad'} ${index + 1}`
@@ -443,7 +442,6 @@ export function IsnadViewer({
       onSelectNarrator={onSelectNarrator}
       hadithNumber={hadithNumber}
       tracePath={tracePath}
-      highlightMadar={highlightMadar}
     />
   )
 
@@ -471,7 +469,6 @@ export function IsnadViewer({
           )}
           {route?.status !== 'unresolved' && <div className="graph-actions isnad-actions" aria-label="Graph display options" role="group">
             <button type="button" aria-pressed={tracePath} className={tracePath ? 'active' : ''} onClick={() => setTracePath(!tracePath)}><Icon name="branch" size={14} /> Trace path</button>
-            <button type="button" aria-pressed={highlightMadar} className={highlightMadar ? 'active gold' : ''} onClick={() => setHighlightMadar(!highlightMadar)}><span className="radar-dot" /> Highlight Madar</button>
           </div>}
           {graph}
         </>
@@ -481,7 +478,7 @@ export function IsnadViewer({
 }
 
 function IsnadGraph({
-  route, label, narrators, selectedId, onSelectNarrator, hadithNumber, tracePath, highlightMadar,
+  route, label, narrators, selectedId, onSelectNarrator, hadithNumber, tracePath,
 }: {
   route: Route
   label: string
@@ -490,7 +487,6 @@ function IsnadGraph({
   onSelectNarrator: (id: number) => void
   hadithNumber?: string
   tracePath: boolean
-  highlightMadar: boolean
 }) {
   const { edges } = route
   const graphId = useId()
@@ -513,7 +509,6 @@ function IsnadGraph({
   const first = positions[0]
   const firstX = first?.x
   const firstY = first?.y
-  const madarId = route.status !== 'unresolved' ? chainNarrators[Math.floor(chainNarrators.length / 2)]?.id : undefined
   const selectedEdgeRecord = edges.find(edge => edge.id === selectedEdge)
   const missingNarrators = chainNarrators.length !== chainIds.length
   const unresolvedIdentities = chainIds.some(id => id >= 800000)
@@ -726,11 +721,10 @@ function IsnadGraph({
 
             {chainNarrators.map((narrator, index) => {
               const position = positions[index]
-              const isMadar = narrator.id === madarId
               return (
                 <g
                   key={narrator.id}
-                  className={`svg-node ${selectedId === narrator.id ? 'selected' : ''} ${isMadar && highlightMadar ? 'madar' : ''}`}
+                  className={`svg-node ${selectedId === narrator.id ? 'selected' : ''}`}
                   transform={`translate(${position.x} ${position.y})`}
                   onClick={() => onSelectNarrator(narrator.id)}
                   role="button"
@@ -759,7 +753,6 @@ function IsnadGraph({
                       <div className="node-meta" dir="auto">{narrator.died} · {narrator.role}</div>
                     </div>
                   </foreignObject>
-                  {isMadar && highlightMadar && <><circle className="pulse" cx="205" cy="5" r="7" /><text className="madar-mark" x="205" y="8" textAnchor="middle">M</text></>}
                 </g>
               )
             })}

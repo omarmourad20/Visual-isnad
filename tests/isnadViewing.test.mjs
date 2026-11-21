@@ -45,6 +45,7 @@ test('single mode renders the chosen route and only its original edges', () => {
     assert.match(html, /aria-label="Select isnad"/)
     assert.match(html, /lang="ar" dir="rtl">راوٍ/)
     assert.match(html, /tabindex="0"/)
+    assert.doesNotMatch(html, /Highlight Madar|madar-mark|svg-node madar/)
   }
   assert.match(second, /Other route is incomplete/)
   assert.match(second, /href="https:\/\/sunnah.com\/bukhari:15"/)
@@ -73,6 +74,15 @@ test('an unresolved edge remains visibly unverified alongside a reviewed route',
   assert.match(html, /Unresolved transmission/)
   assert.doesNotMatch(html, /Source reviewed|Highlight Madar/)
   assert.deepEqual(renderedEdges(html), [3])
+})
+
+test('does not infer Madar from the middle narrator on source-reviewed or incomplete routes', () => {
+  for (const html of [render(routes), render(routes, { chainIndex: 1 })]) {
+    assert.doesNotMatch(html, /Highlight Madar|madar-mark|svg-node madar/)
+    assert.match(html, /Trace path/)
+  }
+  const app = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8')
+  assert.doesNotMatch(app, /highlightMadar|madarId/)
 })
 
 test('profile count cards and the source proposal accordion are absent', () => {
