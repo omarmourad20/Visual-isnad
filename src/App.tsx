@@ -1551,7 +1551,7 @@ function Explorer({ onHome }: { onHome: () => void }) {
             onOpen={openRelatedNarrator}
             onRetry={() => retryNarratorDetails(selected.id)}
           />
-          {editor.can_edit_biographies && selected.id < KG_NARRATOR_OFFSET && selectedDetail && selectedDetail !== 'error' && (
+          {editor.can_edit_biographies && !selected.record.profile_source && selected.id < KG_NARRATOR_OFFSET && selectedDetail && selectedDetail !== 'error' && (
             <div className="profile-section">
               <button type="button" onClick={startEditingProfile}>
                 Edit profile <Icon name="arrow" size={15} />

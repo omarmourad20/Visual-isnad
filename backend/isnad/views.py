@@ -1,6 +1,7 @@
 import re
 from collections import defaultdict
 
+from django.http import Http404
 from django.core.cache import cache
 from django.db.models import Count, Q
 from django.db.models.functions import Left
@@ -22,6 +23,7 @@ from .permissions import StaffWritePermission
 from .throttles import LoginRateThrottle
 from .models import Hadith, Narrator, TransmissionEdge
 from .edge_schema import has_chain_index
+from .reviewed_routes import correct_legacy_bukhari_15, ibn_ulayya_supplement, supplemental_profile
 from .knowledge_graph import UPSTREAM_ERRORS, fetch_record, unavailable
 from .source_api import local_record, source_candidates
 from .source_matching import HadithRecord, propose_match
@@ -65,11 +67,24 @@ def chain_payload(hadith: Hadith) -> dict:
     if not indexed_schema:
         queryset = queryset.defer("chain_index")
     edges = list(queryset)
-    narrator_ids = {edge.teacher_id for edge in edges} | {edge.student_id for edge in edges}
-    narrators = Narrator.objects.filter(id__in=narrator_ids).only(*COMPACT_NARRATOR_FIELDS)
+    raw_edges = serializer(edges, many=True).data
+    display_edges = correct_legacy_bukhari_15(hadith, raw_edges)
+    narrator_ids = {edge[field] for edge in display_edges for field in ("teacher", "student")}
+    narrators = list(Narrator.objects.filter(id__in=narrator_ids).only(*COMPACT_NARRATOR_FIELDS))
+    if display_edges is not raw_edges:
+        stored_ids = {person.pk for person in narrators}
+        # Only the documented supplemental narrator can be absent in the legacy catalog.
+        for narrator_id in narrator_ids - stored_ids:
+            profile = supplemental_profile(narrator_id)
+            if profile is not None:
+                narrators.append(profile)
+        if {person.pk for person in narrators} != narrator_ids:
+            display_edges = raw_edges
+            original_ids = {edge[field] for edge in raw_edges for field in ("teacher", "student")}
+            narrators = list(Narrator.objects.filter(id__in=original_ids).only(*COMPACT_NARRATOR_FIELDS))
     return {
         "narrators": CompactNarratorSerializer(narrators, many=True).data,
-        "edges": serializer(edges, many=True).data,
+        "edges": display_edges,
         "chain_index_available": indexed_schema,
         "chain_boundaries_recorded": indexed_schema and all(edge.chain_index is not None for edge in edges),
     }
@@ -173,8 +188,15 @@ class NarratorViewSet(viewsets.ModelViewSet):
         return NarratorSerializer
 
     def retrieve(self, request, *args, **kwargs):
-        narrator = self.get_object()
+        try:
+            narrator = self.get_object()
+        except Http404:
+            narrator = supplemental_profile(self.kwargs[self.lookup_field])
+            if narrator is None:
+                raise
         data = self.get_serializer(narrator).data
+        if narrator._state.adding:
+            data["profile_source"] = ibn_ulayya_supplement()["source"]
 
         def related_ids(field):
             ids = []

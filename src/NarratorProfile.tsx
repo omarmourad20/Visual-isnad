@@ -10,6 +10,7 @@ export type NarratorRecord = NarratorReference & {
   aqwal?: { alemId: number; alem: string; qawl: string }[]
   aliases?: string
   biography?: string
+  profile_source?: string
   birth_display?: string
   death_display?: string
   birth_year?: number | null
