@@ -452,14 +452,9 @@
 .visualizer { padding: 22px 32px 30px; }
 .visualizer-toolbar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px 20px; margin-bottom: 14px; }
 .visualizer-toolbar h2 { margin: 0; color: #243c37; font: 500 clamp(22px, 3vw, 30px)/1.2 Georgia, serif; }
-.isnad-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
-.isnad-mode { display: inline-flex; gap: 3px; padding: 3px; border: 1px solid #d7e0db; border-radius: 9px; background: #eef2ee; }
-.isnad-mode button, .isnad-picker select { min-height: 34px; border: 1px solid transparent; border-radius: 6px; color: #405f56; background: transparent; font: inherit; font-size: 12px; font-weight: 600; }
-.isnad-mode button { padding-inline: 11px; cursor: pointer; }
-.isnad-mode button[aria-pressed="true"] { border-color: #24594f; background: #24594f; color: white; }
+.isnad-picker select { min-height: 34px; border: 1px solid transparent; border-radius: 6px; color: #405f56; background: transparent; font: inherit; font-size: 12px; font-weight: 600; }
 .isnad-picker { display: inline-flex; gap: 6px; align-items: center; color: #4b625a; font-size: 12px; }
 .isnad-picker select { padding: 0 7px; border-color: #d7e0db; background: #fff; }
-.isnad-graphs { display: grid; gap: 22px; min-width: 0; }
 .isnad-graph { min-width: 0; border-top: 1px solid #dbe3dd; padding-top: 12px; }
 .isnad-graph-heading { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin-bottom: 9px; }
 .isnad-graph-heading h3 { margin: 0; color: #243c37; font: 500 18px Georgia, serif; }
@@ -473,8 +468,7 @@
 .isolated-transmissions > summary { margin-bottom: 12px; }
 .isnad-empty { border-block-start: 1px solid #dbe3dd; margin: 0 0 12px; padding: 12px 0 0; color: #435e54; font-size: 14px; }
 .isnad-actions { justify-content: flex-end; margin-bottom: 9px; }
-.isnad-graphs:has(> .isnad-graph:nth-child(2)) .graph-canvas { height: min(490px, 60vh); }
-.graph-canvas:focus-visible, .isnad-controls :focus-visible, .isnad-evidence summary:focus-visible { outline: 2px solid #24594f; outline-offset: 2px; }
+.graph-canvas:focus-visible, .isnad-picker select:focus-visible, .isnad-evidence summary:focus-visible { outline: 2px solid #24594f; outline-offset: 2px; }
 .graph-actions { display: flex; align-items: center; gap: 6px; }
 .graph-actions > button { height: 31px; display: flex; align-items: center; gap: 6px; padding: 0 9px; border: 1px solid #dddfda; background: #fff; color: #64736e; border-radius: 7px; font-size: 8px; font-weight: 600; cursor: pointer; }
 .graph-actions > button:hover, .graph-actions > button.active { color: #24584f; border-color: #9eb8b1; background: #f1f6f4; }

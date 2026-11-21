@@ -406,7 +406,6 @@ function Icon({ name, size = 18 }: { name: IconName; size?: number }) {
 }
 
 type Route = ReturnType<typeof groupChains>[number]
-type ViewMode = 'single' | 'all'
 
 const ROUTE_STATUS: Record<Route['status'], string> = {
   reviewed: 'Source reviewed',
@@ -415,63 +414,53 @@ const ROUTE_STATUS: Record<Route['status'], string> = {
   unresolved: 'Unresolved transmission',
 }
 
-export function IsnadGraphs({
-  chains, chainIndex, mode, onModeChange, onSelectChain, narrators,
+export function IsnadViewer({
+  chains, chainIndex, onSelectChain, narrators,
   hadithNumber, waiting, emptyReason, selectedId, onSelectNarrator,
 }: {
   chains: Route[]
   chainIndex: number
-  mode: ViewMode
-  onModeChange: (mode: ViewMode) => void
   onSelectChain: (index: number) => void
   narrators: Narrator[]
   hadithNumber?: string
   waiting: boolean
   emptyReason?: string
   selectedId: number | null
-  onSelectNarrator: (id: number, index: number) => void
+  onSelectNarrator: (id: number) => void
 }) {
   const [tracePath, setTracePath] = useState(false)
   const [highlightMadar, setHighlightMadar] = useState(false)
-  const all = mode === 'all' && chains.length > 1
+  const route = chains[chainIndex]
   const hasRoutes = chains.some(route => route.status !== 'unresolved')
   const labelFor = (route: Route, index: number) =>
     `${route.status === 'unresolved' ? 'Recorded edge' : 'Isnad'} ${index + 1}`
-  const graphs = chains.map((route, index) => (all || index === chainIndex) && (
+  const graph = route && (
     <IsnadGraph
       key={`${hadithNumber}-${route.edges[0].id}`}
       route={route}
-      label={labelFor(route, index)}
+      label={labelFor(route, chainIndex)}
       narrators={narrators}
       selectedId={selectedId}
-      onSelectNarrator={id => onSelectNarrator(id, index)}
+      onSelectNarrator={onSelectNarrator}
       hadithNumber={hadithNumber}
       tracePath={tracePath}
       highlightMadar={highlightMadar}
     />
-  ))
+  )
 
   return (
     <section className="visualizer" aria-label="Chain of narration">
       <div className="visualizer-toolbar">
         <h2>Chain of narration</h2>
         {chains.length > 1 && (
-          <div className="isnad-controls">
-            <div className="isnad-mode" role="group" aria-label="Isnad viewing mode">
-              <button type="button" aria-pressed={!all} onClick={() => onModeChange('single')}>Single isnad</button>
-              <button type="button" aria-pressed={all} onClick={() => onModeChange('all')}>All isnads</button>
-            </div>
-            {!all && (
-              <label className="isnad-picker">
-                <span>Show</span>
-                <select aria-label="Select isnad" value={chainIndex} onChange={event => onSelectChain(Number(event.target.value))}>
-                  {chains.map((route, index) => (
-                    <option key={route.edges[0].id} value={index}>{labelFor(route, index)}</option>
-                  ))}
-                </select>
-              </label>
-            )}
-          </div>
+          <label className="isnad-picker">
+            <span>Show</span>
+            <select aria-label="Select isnad" value={chainIndex} onChange={event => onSelectChain(Number(event.target.value))}>
+              {chains.map((option, index) => (
+                <option key={option.edges[0].id} value={index}>{labelFor(option, index)}</option>
+              ))}
+            </select>
+          </label>
         )}
       </div>
       {!chains.length ? (
@@ -483,10 +472,10 @@ export function IsnadGraphs({
             <button type="button" aria-pressed={tracePath} className={tracePath ? 'active' : ''} onClick={() => setTracePath(!tracePath)}><Icon name="branch" size={14} /> Trace path</button>
             <button type="button" aria-pressed={highlightMadar} className={highlightMadar ? 'active gold' : ''} onClick={() => setHighlightMadar(!highlightMadar)}><span className="radar-dot" /> Highlight Madar</button>
           </div>}
-          {hasRoutes ? <div className="isnad-graphs">{graphs}</div> : (
+          {hasRoutes ? graph : (
             <details className="isolated-transmissions">
               <summary>Inspect recorded transmission edges</summary>
-              <div className="isnad-graphs">{graphs}</div>
+              {graph}
             </details>
           )}
         </>
@@ -809,7 +798,6 @@ function Explorer({ onHome }: { onHome: () => void }) {
   const [narrators, setNarrators] = useState<Narrator[]>([])
   const [chains, setChains] = useState<ReturnType<typeof groupChains>>([])
   const [chainIndex, setChainIndex] = useState(0)
-  const [viewMode, setViewMode] = useState<ViewMode>('single')
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
   const [selectedHadithId, setSelectedHadithId] = useState<number | null>(null)
@@ -1389,21 +1377,16 @@ function Explorer({ onHome }: { onHome: () => void }) {
             </div>
           </section>
 
-          <IsnadGraphs
+          <IsnadViewer
             chains={chains}
             chainIndex={chainIndex}
-            mode={viewMode}
-            onModeChange={setViewMode}
             onSelectChain={selectChain}
             narrators={narrators}
             hadithNumber={currentHadith?.hadith_number}
             waiting={isLoading || (!currentHadith && selectedHadithId !== null && !loadError)}
             emptyReason={currentHadith?.withheld_route_reason ?? (loadError || undefined)}
             selectedId={selectedId}
-            onSelectNarrator={(id, index) => {
-              setChainIndex(index)
-              selectNarrator(id)
-            }}
+            onSelectNarrator={selectNarrator}
           />
         </main>
 
