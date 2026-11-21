@@ -1,5 +1,6 @@
 """Narrow read-time corrections for documented legacy import errors."""
 import csv
+import json
 from functools import lru_cache
 
 from rawis_catalog import DATA_DIR
@@ -68,3 +69,42 @@ def correct_legacy_bukhari_15(hadith, edges):
         }
         for edge, (student, teacher) in zip(edges[:3], FIRST_THREE)
     ] + list(edges[3:])
+
+@lru_cache(maxsize=1)
+def reviewed_narrator_routes():
+    path = DATA_DIR / "reviewed_legacy_narrator_routes.json"
+    try:
+        with path.open(encoding="utf-8") as stream:
+            return json.load(stream)
+    except FileNotFoundError:
+        return {}
+
+
+def correct_reviewed_legacy_route(hadith, edges):
+    if hadith.reference_url == SOURCE_URL:
+        return correct_legacy_bukhari_15(hadith, edges)
+    review = reviewed_narrator_routes().get(hadith.reference_url)
+    if (
+        review is None
+        or any(edge["chain_index"] is not None for edge in edges)
+        or [[edge["sequence"], edge["student"], edge["teacher"]] for edge in edges] != review["edges"]
+        or normalize_arabic(hadith.arabic_isnad) != normalize_arabic(review["isnad"])
+        or ibn_ulayya_supplement() is None
+    ):
+        return edges
+    replacements = {int(key): value for key, value in review["replacements"].items()}
+    display = []
+    for edge in edges:
+        student, teacher = edge["student"], edge["teacher"]
+        corrected = replacements.get(student, student), replacements.get(teacher, teacher)
+        if corrected == (student, teacher):
+            display.append(edge)
+        else:
+            display.append({
+                **edge, "student": corrected[0], "teacher": corrected[1],
+                "correction": {
+                    "source_url": hadith.reference_url, "evidence": review["evidence"],
+                    "original_student": student, "original_teacher": teacher,
+                },
+            })
+    return display

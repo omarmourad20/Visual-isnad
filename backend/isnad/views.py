@@ -23,7 +23,7 @@ from .permissions import StaffWritePermission
 from .throttles import LoginRateThrottle
 from .models import Hadith, Narrator, TransmissionEdge
 from .edge_schema import has_chain_index
-from .reviewed_routes import correct_legacy_bukhari_15, ibn_ulayya_supplement, supplemental_profile
+from .reviewed_routes import correct_reviewed_legacy_route, ibn_ulayya_supplement, supplemental_profile
 from .knowledge_graph import UPSTREAM_ERRORS, fetch_record, unavailable
 from .source_api import local_record, source_candidates
 from .source_matching import HadithRecord, propose_match
@@ -68,7 +68,7 @@ def chain_payload(hadith: Hadith) -> dict:
         queryset = queryset.defer("chain_index")
     edges = list(queryset)
     raw_edges = serializer(edges, many=True).data
-    display_edges = correct_legacy_bukhari_15(hadith, raw_edges)
+    display_edges = correct_reviewed_legacy_route(hadith, raw_edges)
     narrator_ids = {edge[field] for edge in display_edges for field in ("teacher", "student")}
     narrators = list(Narrator.objects.filter(id__in=narrator_ids).only(*COMPACT_NARRATOR_FIELDS))
     if display_edges is not raw_edges:

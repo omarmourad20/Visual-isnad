@@ -298,8 +298,16 @@ def extract_chains(isnad: str) -> list[list[tuple[str, str]]]:
     return chains
 
 
+# Catalog cells sometimes truncate the blessing after "عليه". Remove a
+# recognizable phrase while retaining the same word in real names and aliases.
+NAME_HONORIFIC_RE = re.compile(
+    r"\b(?:صل[ىي] الله عليه(?:ا|ما|م|ن)?(?: و?سلم)?|"
+    r"رض[ىي] الله عنه(?:ا|ما|م|ن)?|عليه(?:ا|ما|م|ن)? السلام|رحمه(?:ا|ما|م|ن)? الله)\b"
+)
+
+
 def name_key(name: str) -> str:
-    name = normalize_arabic(name.replace("ـ", ""))
+    name = NAME_HONORIFIC_RE.sub(" ", normalize_arabic(name.replace("ـ", "")))
     name = re.sub(r"\bام المومنين\b", " ", name)
     name = re.sub(r"\bعبدالله\b", "عبد الله", name)
     return " ".join(
@@ -393,6 +401,9 @@ class ChainMatcher:
                 if span[-1] in {"عبد", "بن", "بنت", "ابو", "ام"}:
                     continue
                 key = " ".join(span)
+                # A stranded honorific token is never a partial-name match.
+                if key == "عليه" and key != full_name:
+                    continue
                 substantive = len(span) - int(span[0] in {"ابو", "ام", "عبد", "بن"})
                 if key == full_name:
                     score = self.exact_name_score(span)
