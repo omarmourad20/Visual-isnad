@@ -195,3 +195,24 @@ If using Vite with the server on 8769, start it from another shell with
 a cross-origin error, configure Django's explicit
 `CORS_ALLOWED_ORIGINS` for the exact Vite URL in the shell that launches
 setup and Django.
+
+### Diagnose a missing chain_index error at bootstrap
+
+If `/api/v1/hadiths/bootstrap/` reports `no such column:
+isnad_transmissionedge.chain_index`, confirm the running Django process
+uses this checkout and includes commit `a34e5ff`. The narrator profile
+presentation branch at `4176470` already includes that compatibility
+commit. Check ancestry from the checkout with
+`git merge-base --is-ancestor a34e5ff HEAD`. Exit code 0 confirms the
+local checkout includes the fix. Check the served process separately:
+another worktree or a still-running server can serve older code.
+
+A compatible server returns HTTP 200 with `chain_index_available: false`
+and null edge indices for the legacy database. It returns the stored
+indices for an indexed database. The database does not need a schema
+change for bootstrap. The focused bootstrap tests can run without a
+database or migrations:
+
+```powershell
+.\backend\venv\Scripts\python.exe .\backend\manage.py test isnad.tests.test_bootstrap_schema
+```
