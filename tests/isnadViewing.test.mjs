@@ -50,26 +50,26 @@ test('single mode renders the chosen route and only its original edges', () => {
   assert.match(second, /href="https:\/\/sunnah.com\/bukhari:15"/)
 })
 
-test('one route needs no selector, and isolated recorded edges are visible by default', () => {
+test('one route needs no selector, and connected recorded evidence is visible by default', () => {
   const html = render(routes.slice(0, 1))
   assert.doesNotMatch(html, /All isnads|Select isnad/)
-  const isolated = groupChains([edge(4, 2, 1), edge(5, 30001, 2)])
+  const isolated = groupChains([edge(4, 30001, 2), edge(5, 2, 1)])
   const unresolved = render(isolated)
-  assert.match(unresolved, /Showing one recorded transmission/)
-  assert.match(unresolved, /aria-label="Recorded edge 1: isolated recorded transmission"/)
+  assert.match(unresolved, /Showing recorded transmissions/)
+  assert.match(unresolved, /aria-label="Recorded segment 1: unverified recorded transmissions"/)
   assert.doesNotMatch(unresolved, /Inspect recorded transmission edges|isolated-transmissions/)
   assert.equal((unresolved.match(/class="network-svg"/g) ?? []).length, 1)
   assert.match(unresolved, /Unresolved transmission/)
   assert.doesNotMatch(unresolved, /Source reviewed/)
-  assert.deepEqual(renderedEdges(unresolved), [4])
-  assert.deepEqual(renderedEdges(render(isolated, { chainIndex: 1 })), [5])
+  assert.deepEqual(renderedEdges(unresolved), [5, 4])
+  assert.doesNotMatch(unresolved, /Select isnad/)
   assert.doesNotMatch(render([], { emptyReason: 'The stored route is withheld.' }), /network-svg/)
 })
 
 test('an unresolved edge remains visibly unverified alongside a reviewed route', () => {
   const mixed = groupChains([edge(1, 30001, 2), edge(2, 2, 1), edge(3, 1, 3)], [evidence])
   const html = render(mixed, { chainIndex: 1 })
-  assert.match(html, /Showing one recorded transmission/)
+  assert.match(html, /Showing recorded transmissions/)
   assert.match(html, /Unresolved transmission/)
   assert.doesNotMatch(html, /Source reviewed|Highlight Madar/)
   assert.deepEqual(renderedEdges(html), [3])
@@ -78,4 +78,14 @@ test('an unresolved edge remains visibly unverified alongside a reviewed route',
 test('profile count cards and the source proposal accordion are absent', () => {
   const app = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8')
   assert.doesNotMatch(app, /Direct teachers|Direct students|In this chain|External source proposals/)
+})
+
+test('draws all original arrows across cycles and parallel edges using one node per narrator', () => {
+  const route = groupChains([edge(1, 2, 1), edge(2, 1, 2), edge(3, 2, 1), edge(4, 1, 1)])
+  const html = render(route)
+  assert.match(html, /revisits a narrator/)
+  assert.deepEqual(renderedEdges(html), [4, 3, 2, 1])
+  assert.equal((html.match(/class="svg-node/g) ?? []).length, 2)
+  const paths = [...html.matchAll(/class="edge-hit" d="([^"]+)"/g)].map(match => match[1])
+  assert.equal(new Set(paths).size, 4)
 })

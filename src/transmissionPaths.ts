@@ -29,6 +29,17 @@ function isOrderedPath(edges: EdgeRecord[]) {
     && new Set(orderChain(edges)).size === edges.length + 1
 }
 
+function appendRecordedSegment(routes: Route[], segment: EdgeRecord[] | undefined, edge: EdgeRecord) {
+  const previous = segment?.at(-1)
+  if (segment && previous?.teacher === edge.student && previous.sequence + 1 === edge.sequence) {
+    segment.push(edge)
+    return segment
+  }
+  const edges = [edge]
+  routes.push({ edges, status: 'unresolved' })
+  return edges
+}
+
 export function groupChains(edges: EdgeRecord[], evidence: RouteEvidence[] = []): Route[] {
   const ordered = [...edges].sort((a, b) => a.sequence - b.sequence || a.id - b.id)
   const byId = new Map(ordered.map(edge => [edge.id, edge]))
@@ -41,12 +52,17 @@ export function groupChains(edges: EdgeRecord[], evidence: RouteEvidence[] = [])
     path.forEach(edge => assigned.add(edge.id))
   }
   const indexed = new Map<number, EdgeRecord[]>()
+  let unindexedSegment: EdgeRecord[] | undefined
   for (const edge of ordered) {
-    if (assigned.has(edge.id)) continue
-    if (edge.chain_index == null) {
-      routes.push({ edges: [edge], status: 'unresolved' })
+    if (assigned.has(edge.id)) {
+      unindexedSegment = undefined
       continue
     }
+    if (edge.chain_index == null) {
+      unindexedSegment = appendRecordedSegment(routes, unindexedSegment, edge)
+      continue
+    }
+    unindexedSegment = undefined
     const group = indexed.get(edge.chain_index) ?? []
     group.push(edge)
     indexed.set(edge.chain_index, group)
@@ -55,7 +71,8 @@ export function groupChains(edges: EdgeRecord[], evidence: RouteEvidence[] = [])
     if (isOrderedPath(path)) {
       routes.push({ edges: path, status: 'recorded' })
     } else {
-      routes.push(...path.map(edge => ({ edges: [edge], status: 'unresolved' as const })))
+      let segment: EdgeRecord[] | undefined
+      for (const edge of path) segment = appendRecordedSegment(routes, segment, edge)
     }
   }
   return routes.sort((a, b) => a.edges[0].sequence - b.edges[0].sequence || a.edges[0].id - b.edges[0].id)
@@ -64,4 +81,10 @@ export function groupChains(edges: EdgeRecord[], evidence: RouteEvidence[] = [])
 export function orderChain(edges: EdgeRecord[]) {
   if (!edges.length) return []
   return [edges[0].student, ...edges.map((edge) => edge.teacher)].reverse()
+}
+
+// A recorded segment can revisit a narrator. Use one node per identity while
+// retaining all original edges, including repeated and reciprocal pairs.
+export function graphNarratorIds(edges: EdgeRecord[]) {
+  return [...new Set(orderChain(edges))]
 }

@@ -82,9 +82,13 @@ class IsnadRouteEvidenceTests(SimpleTestCase):
             [(edge["student"], edge["teacher"]) for edge in raw],
             [(30001, 20040), (20040, 20216), (20216, 11014), (11014, 18)],
         )
+        # Match the reported Windows edge IDs against the known source fixture.
+        # IDs do not participate in the signature and must pass through unchanged.
+        for edge_id, edge in enumerate(raw, 46462):
+            edge["id"] = edge_id
         route, = describe_reviewed_routes(hadith, raw, raw)
         self.assertEqual(route["status"], "reviewed")
-        self.assertEqual(route["edge_ids"], [45000, 45001, 45002, 45003])
+        self.assertEqual(route["edge_ids"], [46462, 46463, 46464, 46465])
         self.assertIn("sanad 1158", route["note"])
 
         # A different terminal identity, even along a connected path, is not reviewed.

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import Landing from './Landing'
-import { groupChains, orderChain, type EdgeRecord, type RouteEvidence } from './transmissionPaths'
+import { graphNarratorIds, groupChains, type EdgeRecord, type RouteEvidence } from './transmissionPaths'
 import NarratorProfile, { narratorDate, recordedText, type NarratorRecord, type NarratorReference } from './NarratorProfile'
 
 type IconName =
@@ -432,7 +432,7 @@ export function IsnadViewer({
   const [highlightMadar, setHighlightMadar] = useState(false)
   const route = chains[chainIndex]
   const labelFor = (route: Route, index: number) =>
-    `${route.status === 'unresolved' ? 'Recorded edge' : 'Isnad'} ${index + 1}`
+    `${route.status === 'unresolved' ? (route.edges.length === 1 ? 'Recorded edge' : 'Recorded segment') : 'Isnad'} ${index + 1}`
   const graph = route && (
     <IsnadGraph
       key={`${hadithNumber}-${route.edges[0].id}`}
@@ -467,7 +467,7 @@ export function IsnadViewer({
       ) : (
         <>
           {route?.status === 'unresolved' && (
-            <p className="isnad-empty" role="status">Showing one recorded transmission. Its place in a route is unverified.</p>
+            <p className="isnad-empty" role="status">Showing recorded transmissions. Their place in an isnad is unverified.</p>
           )}
           {route?.status !== 'unresolved' && <div className="graph-actions isnad-actions" aria-label="Graph display options" role="group">
             <button type="button" aria-pressed={tracePath} className={tracePath ? 'active' : ''} onClick={() => setTracePath(!tracePath)}><Icon name="branch" size={14} /> Trace path</button>
@@ -500,13 +500,16 @@ function IsnadGraph({
   const graphCanvasRef = useRef<HTMLDivElement>(null)
   zoomRef.current = zoom
   const graphScale = zoom / 100
-  const chainIds = orderChain(edges)
+  const chainIds = graphNarratorIds(edges)
   const chainNarrators = useMemo(
-    () => orderChain(edges).flatMap(id => narrators.find(narrator => narrator.id === id) ?? []),
+    () => graphNarratorIds(edges).flatMap(id => narrators.find(narrator => narrator.id === id) ?? []),
     [edges, narrators],
   )
   const chainLayout = useMemo(() => layoutChain(chainNarrators), [chainNarrators])
   const positions = chainLayout.positions
+  const nodes = new Map(chainNarrators.map((narrator, index) => [narrator.id, { narrator, position: positions[index] }]))
+  const repeatedNarrator = chainIds.length < edges.length + 1
+  const pairOccurrences = new Map<string, number>()
   const first = positions[0]
   const firstX = first?.x
   const firstY = first?.y
@@ -629,7 +632,8 @@ function IsnadGraph({
         <details className="isnad-evidence">
           <summary>Evidence details</summary>
           {route.evidence && <p><a href={route.evidence.source_url}>Source</a> · <bdi dir="auto">{route.evidence.note}</bdi></p>}
-          {route.status === 'unresolved' && <p>This recorded edge has no established route boundary.</p>}
+          {route.status === 'unresolved' && <p>Adjacent recorded edges are shown together when their endpoints and sequence agree. This does not establish route boundaries.</p>}
+          {repeatedNarrator && <p>The recorded sequence revisits a narrator. Repeated and cyclic links are shown as stored.</p>}
           {unresolvedIdentities && <p>Some narrator identities are unresolved.</p>}
           {missingNarrators && <p>Some narrator records are missing. Edges with missing endpoints cannot be drawn.</p>}
         </details>
@@ -645,7 +649,7 @@ function IsnadGraph({
             height={chainLayout.height * graphScale}
             viewBox={`0 0 900 ${chainLayout.height}`}
             role="group"
-            aria-label={`${label}: ${route.status === 'unresolved' ? 'isolated recorded transmission' : 'directed chain of narration'}`}
+            aria-label={`${label}: ${route.status === 'unresolved' ? 'unverified recorded transmissions' : 'directed chain of narration'}`}
           >
             <defs>
               <marker id={`${graphId}-arrow`} markerWidth="8" markerHeight="8" refX="5" refY="3" orient="auto">
@@ -673,24 +677,35 @@ function IsnadGraph({
             </g>
 
             <g className={`transmission-edges ${tracePath ? 'tracing' : ''}`}>
-              {chainNarrators.slice(0, -1).map((teacher, index) => {
-                const student = chainNarrators[index + 1]
-                const from = positions[index]
-                const to = positions[index + 1]
-                const edge = edges.find(edge => edge.teacher === teacher.id && edge.student === student.id)
-                if (!edge) return null
-                const startX = from.x + 105
-                const startY = from.y + NODE_HEIGHT
-                const endX = to.x + 105
-                const endY = to.y
-                const path = `M${startX} ${startY} C${startX} ${(startY + endY) / 2}, ${endX} ${(startY + endY) / 2}, ${endX} ${endY}`
+              {[...edges].reverse().map(edge => {
+                const teacher = nodes.get(edge.teacher)
+                const student = nodes.get(edge.student)
+                if (!teacher || !student) return null
+                const from = teacher.position
+                const to = student.position
+                const pair = `${edge.teacher}:${edge.student}`
+                const occurrence = pairOccurrences.get(pair) ?? 0
+                pairOccurrences.set(pair, occurrence + 1)
+
+                const forward = from.y < to.y
+                const sideOffset = 24 + 18 * occurrence
+                const startX = from.x + (forward ? 105 : 210)
+                const startY = from.y + (forward ? NODE_HEIGHT : 48)
+                const endX = to.x + (forward ? 105 : 210)
+                const endY = to.y + (forward ? 0 : 22)
+                const midY = (startY + endY) / 2
+                const curveX = Math.max(startX, endX) + sideOffset
+                const path = forward
+                  ? `M${startX} ${startY} C${startX + 22 * occurrence} ${midY}, ${endX + 22 * occurrence} ${midY}, ${endX} ${endY}`
+                  : `M${startX} ${startY} C${curveX} ${startY}, ${curveX} ${endY}, ${endX} ${endY}`
+                const labelX = forward ? (startX + endX) / 2 + 8 + 16 * occurrence : curveX
                 return (
                   <g
                     key={edge.id}
                     data-edge-id={edge.id}
                     role="button"
                     tabIndex={0}
-                    aria-label={`Transmission ${edge.id}: ${teacher.name} to ${student.name}`}
+                    aria-label={`Transmission ${edge.id}: ${teacher.narrator.name} to ${student.narrator.name}`}
                     aria-pressed={selectedEdge === edge.id}
                     onClick={() => setSelectedEdge(edge.id)}
                     onKeyDown={(event) => {
@@ -703,7 +718,7 @@ function IsnadGraph({
                   >
                     <path className="edge-hit" d={path} />
                     <path d={path} markerEnd={`url(#${graphId}-arrow)`} />
-                    <text x={(startX + endX) / 2 + 8} y={(startY + endY) / 2}>{edge.terminology}</text>
+                    <text x={labelX} y={midY}>{edge.terminology}</text>
                   </g>
                 )
               })}
@@ -850,7 +865,7 @@ function Explorer({ onHome }: { onHome: () => void }) {
     setNarrators(mapped)
     setChains(grouped)
     setChainIndex(0)
-    const ordered = orderChain(grouped[0]?.edges ?? [])
+    const ordered = graphNarratorIds(grouped[0]?.edges ?? [])
     setSelectedId(ordered[Math.floor(ordered.length / 2)] ?? null)
   }
 
@@ -1002,13 +1017,13 @@ function Explorer({ onHome }: { onHome: () => void }) {
     return () => window.removeEventListener('keydown', onKey)
   }, [hadithReaderOpen, inspectedNarrator, catalogOpen])
 
-  const chainIds = orderChain(chains[chainIndex]?.edges ?? [])
+  const chainIds = graphNarratorIds(chains[chainIndex]?.edges ?? [])
   const totalHadiths = books.reduce((sum, book) => sum + book.count, 0)
   const selectedBookNumber = Number(currentHadith?.in_book_reference?.match(/Book\s+(\d+)/i)?.[1] || expandedBook || 1)
   const activeBook = books.find((book) => book.number === selectedBookNumber)
   const selectChain = (index: number) => {
     setChainIndex(index)
-    const ordered = orderChain(chains[index]?.edges ?? [])
+    const ordered = graphNarratorIds(chains[index]?.edges ?? [])
     setSelectedId(ordered[Math.floor(ordered.length / 2)] ?? null)
   }
   const selectedSummary = narrators.find((item) => item.id === selectedId) ?? narrators.find(item => item.id === chainIds[0])
@@ -1517,7 +1532,7 @@ function Explorer({ onHome }: { onHome: () => void }) {
             </>
           )}
 
-          {chainIds.includes(selected.id) && <div className="profile-section relationship-grid">
+          {chains[chainIndex]?.status !== 'unresolved' && chainIds.includes(selected.id) && <div className="profile-section relationship-grid">
             <button>
               <small>Chain position</small>
               <strong>{chainIds.indexOf(selected.id) + 1} / {chainIds.length}</strong>

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { groupChains, orderChain } from '../src/transmissionPaths.ts'
+import { graphNarratorIds, groupChains, orderChain } from '../src/transmissionPaths.ts'
 
 function edge(sequence, student, teacher, chain_index) {
   return { id: sequence + 1, sequence, student, teacher, chain_index, terminology: 'عن' }
@@ -18,13 +18,16 @@ test('does not package a disconnected or cyclic indexed path as a route', () => 
   assert.deepEqual(ordered(split), [[11, 30001], [1, 22]])
   assert.deepEqual(split.map(route => route.status), ['unresolved', 'unresolved'])
   const cycle = groupChains([edge(0, 10, 11, 0), edge(1, 11, 10, 0)])
-  assert.equal(cycle.filter(route => route.status === 'unresolved').length, 2)
+  assert.equal(cycle.length, 1)
+  assert.equal(cycle[0].status, 'unresolved')
+  assert.deepEqual(cycle[0].edges.map(e => e.id), [1, 2])
+  assert.deepEqual(graphNarratorIds(cycle[0].edges), [10, 11])
 })
 
-test('does not join unindexed edges by connectivity', () => {
+test('shows contiguous unindexed edges together without classifying them as an isnad', () => {
   const routes = groupChains([edge(0, 30001, 11, 0), edge(1, 30001, 12, null), edge(2, 12, 1, null)])
-  assert.deepEqual(ordered(routes), [[11, 30001], [12, 30001], [1, 12]])
-  assert.deepEqual(routes.map(route => route.status), ['recorded', 'unresolved', 'unresolved'])
+  assert.deepEqual(ordered(routes), [[11, 30001], [1, 12, 30001]])
+  assert.deepEqual(routes.map(route => route.status), ['recorded', 'unresolved'])
 })
 
 test('keeps both source-annotated Bukhari 15 segments in teaching order', () => {
@@ -46,4 +49,11 @@ test('incomplete source annotations cannot swallow recorded edges', () => {
   const routes = groupChains([edge(0, 2, 1, null)], [{ edge_ids: [1, 8], status: 'reviewed' }])
   assert.equal(routes[0].status, 'unresolved')
   assert.equal(routes[0].edges[0].id, 1)
+})
+
+test('does not bridge sequence gaps, disconnected edges, or source-reviewed boundaries', () => {
+  const edges = [edge(0, 10, 11), edge(2, 11, 12), edge(3, 20, 21), edge(4, 21, 22), edge(5, 22, 23)]
+  const routes = groupChains(edges, [{ edge_ids: [5], status: 'reviewed' }])
+  assert.deepEqual(routes.map(route => route.edges.map(e => e.id)), [[1], [3], [4], [5], [6]])
+  assert.deepEqual(routes.map(route => route.status), ['unresolved', 'unresolved', 'unresolved', 'reviewed', 'unresolved'])
 })
