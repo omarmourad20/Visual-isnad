@@ -1,9 +1,7 @@
 import json
-from io import BytesIO
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
-from urllib.error import URLError
 
 from django.test import override_settings
 from rest_framework.test import APITestCase
@@ -43,36 +41,14 @@ class SourceAPITests(APITestCase):
         self.assertEqual(row["status"], "review_required")
         self.assertEqual(row["evidence"], "matn")
 
-    def test_live_routes_remain_separate_and_do_not_write(self):
-        fixture = {"bookId": 1, "matnClean": self.candidate.arabic_matn, "sanads": [
-            {"sanadId": 29, "chain": [{"rawiId": 2}, {"rawiId": 3, "name": "زيد"}]},
-            {"sanadId": 30, "chain": [{"rawiId": 2}, {"rawiId": 4, "name": "عمرو"}]},
-        ]}
+    def test_text_proposal_never_opens_unreviewed_routes(self):
         original = self.client.get(self.root + "?chain=1").json()
-        with patch("isnad.knowledge_graph.urlopen", return_value=BytesIO(json.dumps(fixture).encode())) as upstream:
-            result = self.client.get(self.routes, self.params)
-        self.assertEqual(result.status_code, 200)
-        self.assertTrue(upstream.call_args.args[0].endswith("/api/hadith/14"))
-        routes = result.json()["routes"]
-        self.assertEqual([r["sanad_id"] for r in routes], [29, 30])
-        self.assertEqual(routes[0]["narrators"][0]["name"], "راوٍ غير معروف")
-        self.assertEqual(routes[0]["edges"][0]["terminology"], "")
-        self.assertEqual(routes[0]["source"]["status"], "external_unreviewed")
-        self.assertEqual(self.client.get(self.root + "?chain=1").json(), original)
-
-    def test_unlisted_route_and_stale_text_are_not_previewed(self):
         with patch("isnad.knowledge_graph.urlopen") as upstream:
-            self.assertEqual(self.client.get(self.routes, {"source_key": "other"}).status_code, 404)
-            self.hadith.arabic_matn = "نص مختلف"
-            self.hadith.save(update_fields=["arabic_matn"])
-            self.assertEqual(self.client.get(self.routes, self.params).status_code, 404)
+            result = self.client.get(self.routes, self.params)
+        self.assertEqual(result.status_code, 404)
         upstream.assert_not_called()
-
-    def test_service_error_and_drift_fail_closed(self):
-        with patch("isnad.knowledge_graph.urlopen", side_effect=URLError("offline")):
-            self.assertEqual(self.client.get(self.routes, self.params).status_code, 502)
-        with patch("isnad.knowledge_graph.urlopen", return_value=BytesIO(b'{"bookId":1,"nass":"other"}')):
-            self.assertEqual(self.client.get(self.routes, self.params).status_code, 409)
+        self.assertFalse(self.client.get(self.root + "sources/").json()["results"][0]["can_preview_routes"])
+        self.assertEqual(self.client.get(self.root + "?chain=1").json(), original)
 
     def test_review_requires_current_evidence_and_does_not_adopt_a_route(self):
         proposal = self.bundle["proposals"][0]
@@ -94,36 +70,19 @@ class SourceAPITests(APITestCase):
         with self.settings(HADITH_SOURCE_CROSSWALK=""):
             self.assertEqual(self.client.get(self.root + "sources/").json()["status"], "not_configured")
 
-    def test_matching_live_text_at_changed_edition_reference_is_rejected(self):
-        row = self.bundle["proposals"][0]
-        row["reference"] = "14"
-        Path(self.settings_path).write_text(json.dumps(self.bundle), encoding="utf-8")
-        data = {"bookId": 1, "noInBook": 19, "matnClean": self.candidate.arabic_matn}
-        with patch("isnad.knowledge_graph.urlopen", return_value=BytesIO(json.dumps(data).encode())):
-            self.assertEqual(self.client.get(self.routes, self.params).status_code, 409)
-
     def test_many_to_one_is_ambiguous(self):
         other = HadithRecord("visual_isnad", "", "16", "صحيح البخاري", self.candidate.arabic_matn)
         result = build_crosswalk([local_record(self.hadith), other], [self.candidate])
         self.assertEqual(result["counts"]["ambiguous_left"], 2)
         self.assertTrue(all(row["confidence"] == "ambiguous" for row in result["proposals"]))
 
-    def test_same_printed_reference_in_abu_dawud_cannot_preview_for_local_bukhari(self):
-        local = Hadith.objects.create(
-            id=832, hadith_number="832", book_title="Sahih al-Bukhari", arabic_matn="دعاء في الصلاة",
-        )
-        kg = HadithRecord("hadith_kg", "pinned", "17154", "صحيح البخاري", local.arabic_matn, "832")
-        bundle = build_crosswalk([local_record(local)], [kg])
-        self.settings_path.write_text(json.dumps(bundle), encoding="utf-8")
-        data = {"hadithId": 17154, "bookId": 4, "noInBook": 832, "matnClean": local.arabic_matn}
-        with patch("isnad.knowledge_graph.urlopen", return_value=BytesIO(json.dumps(data).encode())):
-            response = self.client.get("/api/v1/hadiths/832/source-routes/", {"source_key": "hadith_kg:pinned:17154"})
-        self.assertEqual(response.status_code, 409)
-
-    def test_provider_record_identity_must_agree_with_requested_id(self):
-        data = {"hadithId": 17154, "bookId": 1, "matnClean": self.candidate.arabic_matn}
-        with patch("isnad.knowledge_graph.urlopen", return_value=BytesIO(json.dumps(data).encode())):
-            self.assertEqual(self.client.get(self.routes, self.params).status_code, 502)
+    def test_crosswalk_rows_without_explicit_bukhari_metadata_are_hidden(self):
+        row = self.bundle["proposals"][0]
+        for collection in (None, "سنن أبي داود"):
+            row["right_collection"] = collection
+            self.settings_path.write_text(json.dumps(self.bundle), encoding="utf-8")
+            self.assertEqual(self.client.get(self.root + "sources/").json()["results"], [])
+            self.assertEqual(self.client.get(self.routes, self.params).status_code, 404)
 
     def test_ambiguous_proposal_stays_visible_without_route_preview(self):
         duplicate = HadithRecord("hadith_kg", "pinned", "44", "صحيح البخاري", self.candidate.arabic_matn)

@@ -1,4 +1,4 @@
-"""Read-only Knowledge Graph proxy and source-labelled routes."""
+"""Read-only Knowledge Graph proxy for Bukhari text and narrator profiles."""
 import json
 from urllib.error import HTTPError, URLError
 from urllib.request import urlopen
@@ -9,7 +9,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.renderers import BrowsableAPIRenderer, JSONRenderer
 from rest_framework.response import Response
 
-from .kg_converter import convert_kg_chain
+from .collection_scope import KG_BUKHARI_BOOK_ID
 
 MAX_RESPONSE = 8 * 1024 * 1024
 
@@ -31,11 +31,6 @@ def fetch_record(kind, native_id):
     identity_field = "hadithId" if kind == "hadith" else "rawiId"
     if identity_field in data and str(data[identity_field]) != str(native_id):
         raise ValueError("Knowledge Graph returned a different record")
-    if kind == "hadith":
-        chains = [convert_kg_chain(sanad) for sanad in data.get("sanads", [])]
-        if len({chain["sanad_id"] for chain in chains}) != len(chains):
-            raise ValueError("Duplicate Knowledge Graph sanad IDs")
-        data["visual_isnad_chains"] = chains
     return data
 
 
@@ -56,7 +51,15 @@ UPSTREAM_ERRORS = (URLError, OSError, ValueError, KeyError, TypeError, Attribute
 @permission_classes([AllowAny])
 def knowledge_graph_hadith(request, hadith_id):
     try:
-        return Response(fetch_record("hadith", hadith_id))
+        data = fetch_record("hadith", hadith_id)
+        if str(data.get("bookId")) != KG_BUKHARI_BOOK_ID:
+            return Response({"error": "Sahih al-Bukhari hadith not found"}, status=404)
+        # A book identifier confirms collection membership, but the upstream
+        # sanads have not been individually reviewed for graph use.
+        return Response({
+            "hadithId": hadith_id,
+            **{key: data[key] for key in ("bookId", "noInBook", "nass", "matnClean") if key in data},
+        })
     except UPSTREAM_ERRORS as error:
         return unavailable(error, "Hadith")
 

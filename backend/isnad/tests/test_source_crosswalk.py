@@ -19,6 +19,10 @@ class CrosswalkTests(unittest.TestCase):
     def test_collection_scope(self):
         r = build_crosswalk([rec('django','1','نص')],[rec('kg','1','نص',book='سنن أبي داود')])
         self.assertEqual(r['counts']['candidate_pairs'],0)
+    def test_matching_non_bukhari_rows_do_not_generate_proposals(self):
+        other = rec('kg', '832', 'نص', book='سنن أبي داود')
+        self.assertEqual(build_crosswalk([other], [other])['proposals'], [])
+
     def test_missing_text(self):
         r = build_crosswalk([rec('django','1','')],[rec('kg','1','نص')])
         self.assertEqual(r['counts']['left_missing_text'],1)

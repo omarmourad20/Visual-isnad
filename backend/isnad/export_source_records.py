@@ -12,7 +12,7 @@ from contextlib import closing
 import sqlite3
 from pathlib import Path
 
-BUKHARI = "صحيح البخاري"
+from .collection_scope import BUKHARI_ARABIC_TITLE as BUKHARI, BUKHARI_TITLES
 
 def readonly_connection(path):
     uri = Path(path).resolve(strict=True).as_uri() + "?mode=ro"
@@ -32,7 +32,7 @@ def export_visual(db, edition):
                in_book_reference, {isnad_column} FROM isnad_hadith ORDER BY id
     """)
     for pk, number, book, full, matn, reference, isnad in cursor:
-        if not book or "bukhari" not in book.casefold() and "البخاري" not in book:
+        if book not in BUKHARI_TITLES:
             continue
         yield dict(provider="visual_isnad", edition=edition, native_id=str(pk),
                    collection=BUKHARI, arabic_matn=matn or "", arabic_full=full or "", arabic_isnad=isnad or "",

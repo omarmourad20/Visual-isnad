@@ -6,8 +6,10 @@ import argparse
 import json
 
 try:
+    from .collection_scope import BUKHARI_TITLES
     from .source_matching import HadithRecord, external_key, normalize_arabic, propose_match, text_digest, text_keys
 except ImportError:
+    from collection_scope import BUKHARI_TITLES
     from source_matching import HadithRecord, external_key, normalize_arabic, propose_match, text_digest, text_keys
 
 def parse_record(row):
@@ -34,6 +36,8 @@ def load_records(path):
 
 def build_crosswalk(left, right):
     """Preserve every exact normalized match, including ambiguous many-to-many pairs."""
+    left = [record for record in left if record.collection in BUKHARI_TITLES]
+    right = [record for record in right if record.collection in BUKHARI_TITLES]
     index = defaultdict(list)
     for record in right:
         for key in text_keys(record):
@@ -58,6 +62,7 @@ def build_crosswalk(left, right):
                 left_id=record.native_id, left_provider=record.provider, left_text_digest=text_digest(record),
                 right_id=candidate.native_id, provider=candidate.provider, edition=candidate.edition,
                 reference=candidate.printed_reference, right_text_digest=text_digest(candidate),
+                right_collection=candidate.collection,
                 ambiguity="single_candidate",
             )
             proposals.append(proposal)

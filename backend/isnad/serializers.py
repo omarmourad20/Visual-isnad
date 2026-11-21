@@ -2,6 +2,7 @@ import re
 
 from rest_framework import serializers
 
+from .collection_scope import BUKHARI_TITLES, is_bukhari_reference
 from .models import Hadith, Narrator, TransmissionEdge
 
 NARRATED_RE = re.compile(r"^Narrated\s+([^:]+):", re.I)
@@ -35,6 +36,14 @@ class CompactNarratorSerializer(serializers.ModelSerializer):
 
 
 class HadithSerializer(serializers.ModelSerializer):
+    def validate(self, attrs):
+        title = attrs.get("book_title", getattr(self.instance, "book_title", None))
+        reference = attrs.get("reference_url", getattr(self.instance, "reference_url", ""))
+        if title not in BUKHARI_TITLES:
+            raise serializers.ValidationError({"book_title": "Only Sahih al-Bukhari is supported."})
+        if reference and not is_bukhari_reference(reference):
+            raise serializers.ValidationError({"reference_url": "Expected a Sunnah.com Bukhari reference."})
+        return attrs
     class Meta:
         model = Hadith
         fields = "__all__"
@@ -64,6 +73,10 @@ class HadithListSerializer(serializers.ModelSerializer):
 
 
 class TransmissionEdgeSerializer(serializers.ModelSerializer):
+    def validate_hadith(self, hadith):
+        if hadith.book_title not in BUKHARI_TITLES:
+            raise serializers.ValidationError("Only Sahih al-Bukhari is supported.")
+        return hadith
     class Meta:
         model = TransmissionEdge
         fields = "__all__"

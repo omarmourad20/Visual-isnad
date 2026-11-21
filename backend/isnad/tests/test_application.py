@@ -288,7 +288,7 @@ class NarratorProfileApiTests(APITestCase):
             Narrator(id=10, name="Narrator ten", arabic_name="الراوي العاشر"),
             Narrator(id=800000, name="Unresolved narrator"),
         ])
-        hadith = Hadith.objects.create(hadith_number="1")
+        hadith = Hadith.objects.create(hadith_number="1", book_title="Sahih al-Bukhari")
         TransmissionEdge.objects.bulk_create([
             TransmissionEdge(hadith=hadith, teacher_id=1, student_id=student, sequence=index)
             for index, student in enumerate((2, 10, 10, 800000))
@@ -327,25 +327,25 @@ class NarratorProfileApiTests(APITestCase):
 
 
 class KnowledgeGraphTests(SimpleTestCase):
-    def test_hadith_endpoint_keeps_sanads_separate_and_orders_edges(self):
+    def test_bukhari_hadith_serves_text_without_unreviewed_routes(self):
+        payload = '{"hadithId":1,"bookId":1,"nass":"إنما الأعمال بالنيات","sanads":[{"sanadId":12},{"sanadId":13}]}'
+        with patch("isnad.knowledge_graph.urlopen", return_value=StringIO(payload)) as upstream:
+            response = self.client.get("/api/v1/knowledge-graph/hadiths/1/")
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(upstream.call_args.args[0].endswith("/api/hadith/1"))
+        self.assertEqual(response.json(), {"hadithId": 1, "bookId": 1, "nass": "إنما الأعمال بالنيات"})
+
+    def test_public_kg_api_rejects_abu_dawud_and_unknown_collections(self):
         import json
 
-        sanads = [
-            {"sanadId": 12, "grade": "صحيح", "chain": [{"rawiId": 11}, {"rawiId": 21}, {"rawiId": 31}]},
-            {"sanadId": 13, "chain": [{"rawiId": 11}, {"rawiId": 41}]},
-        ]
-        with patch("isnad.knowledge_graph.urlopen", return_value=StringIO(json.dumps({"sanads": sanads}))) as upstream:
-            response = self.client.get("/api/v1/knowledge-graph/hadiths/17154/")
-
-        self.assertEqual(response.status_code, 200)
-        self.assertTrue(upstream.call_args.args[0].endswith("/api/hadith/17154"))
-        chains = response.json()["visual_isnad_chains"]
-        self.assertEqual([chain["sanad_id"] for chain in chains], [12, 13])
-        self.assertEqual(chains[0]["grade"], "صحيح")
-        self.assertEqual(
-            [[(edge["teacher"], edge["student"]) for edge in chain["edges"]] for chain in chains],
-            [[(1000021, 1000011), (1000031, 1000021)], [(1000041, 1000011)]],
-        )
+        for book in ({"bookId": 4}, {}):
+            payload = {**book, "hadithId": 17154, "noInBook": 832,
+                       "nass": "نص خارجي", "sanads": [{"sanadId": 28706}]}
+            with patch("isnad.knowledge_graph.urlopen", return_value=StringIO(json.dumps(payload))):
+                response = self.client.get("/api/v1/knowledge-graph/hadiths/17154/")
+            self.assertEqual(response.status_code, 404)
+            self.assertNotIn("sanads", response.json())
+            self.assertNotIn("nass", response.json())
 
     def test_rawi_endpoint_preserves_teachers_students_and_evaluations(self):
         payload = '{"teachers":[{"id":2}],"students":[{"id":3}],"aqwal":[{"alemId":4}]}'
@@ -361,7 +361,7 @@ class KnowledgeGraphTests(SimpleTestCase):
         })
 
     def test_malformed_hadith_from_upstream_returns_bad_gateway(self):
-        payload = '{"sanads":[{"sanadId":12,"chain":[{}]}]}'
+        payload = '[]'
         with patch("isnad.knowledge_graph.urlopen", return_value=StringIO(payload)):
             response = self.client.get("/api/v1/knowledge-graph/hadiths/17154/")
 

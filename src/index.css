@@ -451,17 +451,6 @@
 
 .visualizer { padding: 22px 32px 30px; }
 .visualizer-toolbar { display: flex; justify-content: space-between; align-items: end; margin-bottom: 10px; }
-.visualizer-toolbar:has(.knowledge-graph-load) { flex-wrap: wrap; gap: 8px 16px; }
-.knowledge-graph-load {
-  padding: 8px 12px;
-  border: 1px solid #b99a64;
-  border-radius: 6px;
-  background: #fffaf0;
-  color: #54452b;
-  font-weight: 600;
-  cursor: pointer;
-}
-.knowledge-graph-load:disabled { opacity: .5; cursor: wait; }
 .visualizer-toolbar h2 { margin: 0; color: #243c37; font-family: Georgia, serif; font-weight: 500; font-size: 18px; }
 .visualizer-toolbar h2 span { font-family: 'DM Sans', sans-serif; font-size: 9px; font-weight: 600; color: #84918d; margin-left: 6px; }
 .graph-actions { display: flex; align-items: center; gap: 6px; }

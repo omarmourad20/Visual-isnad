@@ -55,14 +55,12 @@ enrichment, unset `HADITH_SOURCE_CROSSWALK` and restart Django.
    matches in a source edition are marked ambiguous. Missing and unmatched
    inputs remain explicit. There is no fuzzy auto-matching.
 4. **Enrichment.** Django serves read-only, paginated proposals at
-   `/api/v1/hadiths/<local-reference>/sources/`. The corresponding
-   `source-routes/?source_key=...` endpoint previews a listed KG record only
-   when the current provider confirms the Bukhari collection and corroborates
-   the text. The existing KG narrator endpoint returns the provider's
-   profiles and reported relationships. The frontend preserves the original
-   reader and can restore the local graph without a second request. Provider
-   failure leaves the current graph usable. Fawaz and Jaguar contribute
-   text proposals only.
+   `/api/v1/hadiths/<local-reference>/sources/`. These
+   proposals require explicit Bukhari collection metadata. Existing bundles
+   without this field must be regenerated using the steps above. Text
+   proposals cannot open an isnad. The reader and graph use the local
+   Bukhari catalog, including its recorded alternative routes. Knowledge Graph
+   narrator profiles continue to provide supplementary biographical information.
 5. **Review.** Record decisions in a JSON array. Copy the four binding
    fields `left_key`, `right_key`, `left_text_digest`, and
    `right_text_digest` from a proposal, and add nonempty `reviewer`,
@@ -138,21 +136,12 @@ After Django is listening, run from another terminal:
 .\scripts\Setup-SourcePreview.ps1 -VerifyOnly
 ```
 
-The verifier checks the configured KG stats and Hadith 14 upstream, Django's
-conversion, its HTTP proposal for Visual 15, both ordered KG routes and
-their provenance, and the original graph before and after preview. Set
-`-DjangoUrl` and `-KnowledgeGraphUrl` if using different ports. If the original
-chain endpoint fails, check that the selected Visual SQLite schema already
-matches the running Django code. The tools do not alter the schema. If
-Django reports `not_configured`, start it from the shell that built the
-crosswalk. A `stale` response indicates that indexed local content no
-longer matches the digest. An `available` response with count zero indicates
-no proposal for that record.
-
-In React, open Bukhari 15, expand **External source proposals**, and preview
-Knowledge Graph. Select sanad 29 and 30, then restore Visual Isnad. Each route
-ends at Anas in the provider graph. The local selected chain, narrator and
-edge are restored. A provider failure preserves the graph already on screen.
+The verifier checks the KG stats endpoint, the Bukhari text lookup for KG 14,
+rejection of Abu Dawud 832 (KG 17154), and the local Bukhari 15 graph and
+text proposal. It also checks that the proposal cannot open unreviewed
+routes. Set `-DjangoUrl` and `-KnowledgeGraphUrl` for other ports. In React,
+**External source proposals** shows text correspondences for review, while
+the graph selector shows local Bukhari routes or recorded legacy segments.
 
 ## Windows legacy SQLite and one-command preview
 
@@ -182,8 +171,8 @@ manually instead, run the setup in the same shell or set
 `HADITH_SOURCE_PREVIEW_DB` and `HADITH_SOURCE_CROSSWALK` explicitly.
 
 For the legacy database expect the verifier to report
-`chain_index_available=False`, then pass both converted KG routes and the
-unchanged local graph check. Keep the original database at its current
+`chain_index_available=False` and pass the local graph and external
+route rejection checks. Keep the original database at its current
 schema for this verification. Any future editor schema decision should
 first use a consistent SQLite backup and validate integrity and foreign
 keys on a disposable copy. Migration 0003 alone leaves existing indices

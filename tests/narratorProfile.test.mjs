@@ -51,6 +51,7 @@ test('separates KG route relationships and catalog relationships', () => {
   const kg = profile({ teachers: related, students: related }, 'knowledge_graph')
   const local = profile({
     teachers: related, students: related, transmission_students: related,
+    knowledge_graph_profile: { id: 1003795, name: null, arabic_name: 'شعبة بن الحجاج' },
     catalog_source_url: 'https://muslimscholars.info/manage.php?ID=20020',
   })
   assert.match(kg, /Profile source: Hadith Knowledge Graph/)
@@ -58,5 +59,7 @@ test('separates KG route relationships and catalog relationships', () => {
   assert.match(kg, /Students in KG routes \(1\)/)
   assert.match(local, /Profile source: Visual Isnad catalog/)
   assert.match(local, /Open catalog entry/)
+  assert.match(local, /Open Hadith Knowledge Graph profile/)
+  assert.match(kg, /general Knowledge Graph observations/)
   assert.match(local, /Narrators linked in imported Bukhari chains \(1\)/)
 })

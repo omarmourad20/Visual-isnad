@@ -5,6 +5,7 @@ from pathlib import Path
 
 from django.conf import settings
 
+from .collection_scope import BUKHARI_ARABIC_TITLE, BUKHARI_TITLES
 from .source_matching import HadithRecord, external_key, text_digest
 
 MAX_BUNDLE_BYTES = 32 * 1024 * 1024
@@ -22,11 +23,12 @@ def load_proposals(path, modified, size):
     indexed = {}
     for row in bundle["proposals"]:
         metadata = row["provider"], row["edition"], row["right_id"]
-        if row["left_provider"] != "visual_isnad" or row["provider"] not in PROVIDERS:
+        if (row["left_provider"] != "visual_isnad" or row["provider"] not in PROVIDERS
+                or row.get("right_collection") not in BUKHARI_TITLES):
             continue
         if not all(isinstance(value, str) and value for value in metadata):
             raise ValueError("Invalid source identifier")
-        source = HadithRecord(*metadata, "صحيح البخاري", "")
+        source = HadithRecord(*metadata, BUKHARI_ARABIC_TITLE, "")
         if row["right_key"] != external_key(source):
             raise ValueError("Source key does not match provenance")
         indexed.setdefault(row["left_id"], {})[row["right_key"]] = row
@@ -35,14 +37,13 @@ def load_proposals(path, modified, size):
 
 def local_record(hadith):
     return HadithRecord(
-        "visual_isnad", "", str(hadith.pk), "صحيح البخاري",
+        "visual_isnad", "", str(hadith.pk), BUKHARI_ARABIC_TITLE,
         hadith.arabic_matn, hadith.in_book_reference, hadith.arabic_full, hadith.arabic_isnad,
     )
 
 
 def source_candidates(hadith):
-    title = hadith.book_title.casefold()
-    if "bukhari" not in title and "البخاري" not in title:
+    if hadith.book_title not in BUKHARI_TITLES:
         return "not_applicable", []
     path = getattr(settings, "HADITH_SOURCE_CROSSWALK", "")
     if not path:
@@ -59,9 +60,8 @@ def source_candidates(hadith):
             )},
             "isnad_agreement": row.get("isnad_agreement", "unavailable"),
             "status": "review_required",
-            "can_preview_routes": row["provider"] == "hadith_kg" and row["confidence"] != "ambiguous"
-            and row["ambiguity"] == "single_candidate" and row["right_id"].isascii()
-            and row["right_id"].isdecimal() and len(row["right_id"]) <= 10,
+            # Crosswalks corroborate text, not transmission paths.
+            "can_preview_routes": False,
         } for row in rows.values() if row["left_text_digest"] == digest]
         return ("stale" if rows and not candidates else "available"), candidates
     except (OSError, ValueError, TypeError, KeyError, AttributeError):

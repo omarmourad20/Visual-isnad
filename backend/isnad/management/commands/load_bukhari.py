@@ -7,6 +7,7 @@ from pathlib import Path
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
+from isnad.collection_scope import BUKHARI_TITLE, BUKHARI_TITLES, is_bukhari_reference
 from isnad.models import Hadith, Narrator, TransmissionEdge
 from isnad.scholar_bios import load_cache
 from rawis_catalog import DATA_DIR, UNRESOLVED_NARRATOR_ID_START, read_rawis
@@ -711,7 +712,8 @@ class Command(BaseCommand):
         for row in rows:
             reference = (row.get("Reference") or "").strip()
             number_match = HADITH_NO_RE.search(reference)
-            if not number_match:
+            if (not number_match or not is_bukhari_reference(reference)
+                    or (row.get("Book") or BUKHARI_TITLE).strip() not in BUKHARI_TITLES):
                 raise CommandError(f"Invalid Bukhari reference: {reference!r}.")
             number = number_match.group(1).lower()
             if number in seen:
@@ -750,7 +752,7 @@ class Command(BaseCommand):
                     hadith_number=str(hadith_number)[:50],
                     book_number=int(book_match.group(1)) if book_match else None,
                     in_book_reference=in_book_reference,
-                    book_title=(row.get("Book") or "Sahih al-Bukhari")[:255],
+                    book_title=(row.get("Book") or BUKHARI_TITLE).strip(),
                     chapter_number=(row.get("Chapter_Number") or "")[:50],
                     chapter_title=chapter_en,
                     chapter_title_arabic=(row.get("Chapter_Title_Arabic") or "")[:255],

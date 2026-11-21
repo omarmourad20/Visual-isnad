@@ -26,12 +26,12 @@ class BootstrapSchemaTests(SimpleTestCase):
         rows.defer.return_value = rows
         with (
             patch("isnad.views.book_catalog", return_value=[]),
-            patch("isnad.views.Hadith.objects.filter") as hadiths,
+            patch("isnad.views.bukhari_hadiths") as hadiths,
             patch("isnad.views.TransmissionEdge.objects.filter") as edges,
             patch("isnad.views.Narrator.objects.filter") as people,
             patch("isnad.views.has_chain_index", return_value=indexed),
         ):
-            hadiths.return_value.first.return_value = hadith
+            hadiths.return_value.filter.return_value.first.return_value = hadith
             edges.return_value.order_by.return_value = rows
             people.return_value.only.return_value = narrators
             response = self.client.get("/api/v1/hadiths/bootstrap/")

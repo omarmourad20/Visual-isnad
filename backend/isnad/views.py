@@ -18,15 +18,14 @@ from rest_framework.response import Response
 from rawis_catalog import UNRESOLVED_NARRATOR_ID_START
 
 from .bukhari_books import BUKHARI_BOOKS
+from .collection_scope import BUKHARI_TITLES
 from .editor_auth import issue_editor_token
 from .permissions import StaffWritePermission
 from .throttles import LoginRateThrottle
 from .models import Hadith, Narrator, TransmissionEdge
 from .edge_schema import has_chain_index
 from .reviewed_routes import correct_reviewed_legacy_route, ibn_ulayya_supplement, supplemental_profile
-from .knowledge_graph import UPSTREAM_ERRORS, fetch_record, unavailable
-from .source_api import local_record, source_candidates
-from .source_matching import HadithRecord, propose_match
+from .source_api import source_candidates
 from .serializers import (
     COMPACT_NARRATOR_FIELDS,
     CompactNarratorSerializer,
@@ -43,16 +42,20 @@ COMPACT_TRUE = {"1", "true", "yes"}
 BOOK_REF_RE = re.compile(r"Book\s+(\d+)", re.I)
 
 
+def bukhari_hadiths():
+    return Hadith.objects.filter(book_title__in=BUKHARI_TITLES)
+
+
 def hadith_by_pk(hadith_ref: str | None) -> Hadith | None:
     if not hadith_ref or not str(hadith_ref).isdecimal():
         return None
-    return Hadith.objects.filter(pk=hadith_ref).first()
+    return bukhari_hadiths().filter(pk=hadith_ref).first()
 
 
 def hadith_by_number(hadith_ref: str | None) -> Hadith | None:
     if not hadith_ref:
         return None
-    return Hadith.objects.filter(hadith_number=str(hadith_ref)).first()
+    return bukhari_hadiths().filter(hadith_number=str(hadith_ref)).first()
 
 
 def resolve_hadith_lookup(lookup: str | None) -> Hadith | None:
@@ -96,7 +99,7 @@ def book_catalog() -> list[dict]:
         return cached
 
     counted = list(
-        Hadith.objects.exclude(book_number=None)
+        bukhari_hadiths().exclude(book_number=None)
         .values("book_number")
         .annotate(count=Count("id"))
         .order_by("book_number")
@@ -105,7 +108,7 @@ def book_catalog() -> list[dict]:
 
     if not counts:
         fallback: dict[int, int] = defaultdict(int)
-        for ref in Hadith.objects.values_list("in_book_reference", flat=True).iterator(chunk_size=2000):
+        for ref in bukhari_hadiths().values_list("in_book_reference", flat=True).iterator(chunk_size=2000):
             match = BOOK_REF_RE.search(ref or "")
             if match:
                 fallback[int(match.group(1))] += 1
@@ -200,6 +203,10 @@ class NarratorViewSet(viewsets.ModelViewSet):
             data["catalog_source_url"] = data["profile_source"]
         elif narrator.pk == 20020:
             data["catalog_source_url"] = "https://muslimscholars.info/manage.php?ID=20020&submit=scholar"
+            # The profile audit corroborated the identity across the catalogs.
+            data["knowledge_graph_profile"] = {
+                "id": 1003795, "name": None, "arabic_name": "شعبة بن الحجاج بن الورد",
+            }
 
         def related_ids(field):
             ids = []
@@ -216,7 +223,10 @@ class NarratorViewSet(viewsets.ModelViewSet):
         # Keep imported graph evidence separate from the catalog's own
         # student list. Synthetic unresolved IDs are not named students.
         transmission_students = list(
-            TransmissionEdge.objects.filter(teacher=narrator, student_id__lt=UNRESOLVED_NARRATOR_ID_START)
+            TransmissionEdge.objects.filter(
+                hadith__book_title__in=BUKHARI_TITLES,
+                teacher=narrator, student_id__lt=UNRESOLVED_NARRATOR_ID_START,
+            )
             .exclude(student_id=narrator.pk)
             .order_by("student_id")
             .values_list("student_id", flat=True)
@@ -292,7 +302,7 @@ class HadithViewSet(viewsets.ModelViewSet):
         return HadithSerializer
 
     def get_queryset(self):
-        queryset = super().get_queryset()
+        queryset = bukhari_hadiths().order_by("id")
         search = self.request.query_params.get("search")
         number = self.request.query_params.get("hadith_number")
         book = self.request.query_params.get("book")
@@ -338,29 +348,8 @@ class HadithViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["get"], url_path="source-routes")
     def source_routes(self, request, *args, **kwargs):
-        instance = self.get_object()
-        state, candidates = source_candidates(instance)
-        candidate = next((row for row in candidates if row["can_preview_routes"]
-                          and row["right_key"] == request.query_params.get("source_key")), None)
-        if candidate is None:
-            return Response({"error": "Source proposal unavailable", "status": state}, status=404)
-        try:
-            data = fetch_record("hadith", int(candidate["right_id"]))
-            live_record = HadithRecord(
-                candidate["provider"], candidate["edition"], candidate["right_id"], "صحيح البخاري",
-                data.get("matnClean") or "", str(data.get("noInBook") or ""), data.get("nass") or "",
-            )
-            reference_changed = candidate["reference"] and live_record.printed_reference != candidate["reference"]
-            if (str(data.get("bookId")) != "1" or reference_changed
-                    or propose_match(local_record(instance), live_record).status != "review_required"):
-                return Response({"error": "Live Knowledge Graph text or collection does not corroborate this proposal"}, status=409)
-            return Response({
-                "proposal": candidate,
-                "verification": "text_corroborated_routes_unreviewed",
-                "routes": data["visual_isnad_chains"],
-            })
-        except UPSTREAM_ERRORS as error:
-            return unavailable(error, "Hadith")
+        self.get_object()
+        return Response({"error": "No reviewed external routes are available"}, status=404)
 
     @action(detail=False, methods=["get"], url_path="books")
     def books(self, request):
@@ -370,8 +359,8 @@ class HadithViewSet(viewsets.ModelViewSet):
     def bootstrap(self, request):
         books = book_catalog()
         first = (
-            Hadith.objects.filter(hadith_number="1").first()
-            or Hadith.objects.order_by("id").first()
+            bukhari_hadiths().filter(hadith_number="1").first()
+            or bukhari_hadiths().order_by("id").first()
         )
         if first is None:
             return Response({"books": books, "hadith": None, "narrators": [], "edges": []})
@@ -382,7 +371,7 @@ class HadithViewSet(viewsets.ModelViewSet):
 
 
 class TransmissionEdgeViewSet(viewsets.ModelViewSet):
-    queryset = TransmissionEdge.objects.all()
+    queryset = TransmissionEdge.objects.order_by("id")
     serializer_class = TransmissionEdgeSerializer
     permission_classes = [StaffWritePermission]
 
@@ -400,7 +389,7 @@ class TransmissionEdgeViewSet(viewsets.ModelViewSet):
         return TransmissionEdgeSerializer if self.indexed_schema else LegacyTransmissionEdgeSerializer
 
     def get_queryset(self):
-        queryset = super().get_queryset()
+        queryset = super().get_queryset().filter(hadith__book_title__in=BUKHARI_TITLES)
         if not self.indexed_schema:
             queryset = queryset.defer("chain_index")
         hadith_number = self.request.query_params.get("hadith_number")
@@ -409,5 +398,5 @@ class TransmissionEdgeViewSet(viewsets.ModelViewSet):
         if hadith_number or hadith_id:
             if hadith is None:
                 return queryset.none()
-            queryset = queryset.filter(hadith=hadith).order_by("sequence")
+            queryset = queryset.filter(hadith=hadith).order_by("sequence", "id")
         return queryset

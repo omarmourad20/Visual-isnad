@@ -12,6 +12,7 @@ export type NarratorRecord = NarratorReference & {
   biography?: string
   profile_source?: string
   catalog_source_url?: string
+  knowledge_graph_profile?: NarratorReference
   birth_display?: string
   death_display?: string
   birth_year?: number | null
@@ -109,6 +110,7 @@ export default function NarratorProfile({ record, source, status, onOpen, onRetr
   onOpen: (reference: NarratorReference) => void
   onRetry: () => void
 }) {
+  const linkedProfile = record.knowledge_graph_profile
   const fields = [
     ['Birth date', narratorDate(record.birth_display, record.birth_year)],
     ['Birth place', recordedText(record.birth_place)],
@@ -149,6 +151,11 @@ export default function NarratorProfile({ record, source, status, onOpen, onRetr
           <section>
             <p>Profile source: {source === 'knowledge_graph' ? 'Hadith Knowledge Graph' : 'Visual Isnad catalog'}</p>
             {record.catalog_source_url && <a href={record.catalog_source_url}>Open catalog entry</a>}
+            {linkedProfile && (
+              <p><button type="button" onClick={() => onOpen(linkedProfile)}>
+                Open Hadith Knowledge Graph profile
+              </button></p>
+            )}
           </section>
           <section>
             <h3>{biography ? noteHeading(biography.trim()) : 'Biography'}</h3>
@@ -190,7 +197,7 @@ export default function NarratorProfile({ record, source, status, onOpen, onRetr
           )}
           <section aria-label="Narrator relationships">
             <p>{source === 'knowledge_graph'
-              ? 'Teachers and students are reported from Knowledge Graph routes.'
+              ? 'Teachers and students are general Knowledge Graph observations and may come from other collections.'
               : 'Teachers and students come from the narrator catalog.'}</p>
             <NarratorRelationships label={source === 'knowledge_graph' ? 'Teachers in KG routes' : 'Teachers'} entries={relationshipList(record.teachers, record.teachers_inds)} onOpen={onOpen} />
             <NarratorRelationships label={source === 'knowledge_graph' ? 'Students in KG routes' : 'Students'} entries={relationshipList(record.students, record.students_inds)} onOpen={onOpen} />
