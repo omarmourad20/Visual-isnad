@@ -15,6 +15,7 @@ export default defineConfig(({ mode, command }) => {
   const configuredApi = String(env.VITE_API_BASE_URL || process.env.VITE_API_BASE_URL || '')
     .trim()
     .replace(/\/$/, '')
+  const djangoProxyTarget = process.env.DJANGO_DEV_PROXY_TARGET?.trim() || 'http://127.0.0.1:8000'
   const apiOrigin =
     command === 'serve' ? configuredApi : configuredApi || 'https://visual-isnad.onrender.com'
 
@@ -47,7 +48,7 @@ react(),
       strictPort: true,
       proxy: {
         '/api': {
-          target: 'http://127.0.0.1:8000',
+          target: djangoProxyTarget,
           changeOrigin: true,
         },
       },

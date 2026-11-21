@@ -216,3 +216,21 @@ database or migrations:
 ```powershell
 .\backend\venv\Scripts\python.exe .\backend\manage.py test isnad.tests.test_bootstrap_schema
 ```
+
+### Diagnose a Vite backend port mismatch
+
+Vite's same-origin development proxy targets `http://127.0.0.1:8000`
+by default. If Django is on another port, either restart the intended
+Django instance on 8000 or set `DJANGO_DEV_PROXY_TARGET` before starting
+Vite. For example, in PowerShell:
+
+```powershell
+$env:DJANGO_DEV_PROXY_TARGET = 'http://127.0.0.1:8001'
+pnpm dev --host 127.0.0.1 --port 5174 --strictPort
+```
+
+Use the same-origin proxy with no direct `VITE_API_BASE_URL` override from
+the environment or Vite env files. Verify the Django endpoint directly,
+then verify `http://127.0.0.1:5174/api/v1/hadiths/bootstrap/` to confirm the
+proxy serves the expected process. The proxy override is only used by
+Vite's development server.
