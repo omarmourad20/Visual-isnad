@@ -3,7 +3,7 @@ from collections import defaultdict
 
 from django.http import Http404
 from django.core.cache import cache
-from django.db.models import Case, Count, F, Q, Value, When
+from django.db.models import Case, Count, F, Q, TextField, Value, When
 from django.db.models.functions import Left, Replace
 from django.contrib.auth import authenticate, login, logout
 from django.middleware.csrf import get_token
@@ -52,7 +52,7 @@ ARABIC_LETTER_RE = re.compile(r"[ء-ي]")
 def without_arabic_search_marks(field):
     expression = F(field)
     for mark in ARABIC_SEARCH_MARKS:
-        expression = Replace(expression, Value(mark), Value(""))
+        expression = Replace(expression, Value(mark), Value(""), output_field=TextField())
     return expression
 
 
