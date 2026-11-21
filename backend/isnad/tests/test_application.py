@@ -1,5 +1,5 @@
 import csv
-from io import StringIO
+from io import BytesIO, StringIO
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
@@ -333,6 +333,8 @@ class KnowledgeGraphTests(SimpleTestCase):
             response = self.client.get("/api/v1/knowledge-graph/hadiths/1/")
         self.assertEqual(response.status_code, 200)
         self.assertTrue(upstream.call_args.args[0].endswith("/api/hadith/1"))
+        self.assertEqual(response["Content-Type"], "application/json; charset=utf-8")
+        self.assertIn("إنما الأعمال بالنيات".encode("utf-8"), response.content)
         self.assertEqual(response.json(), {"hadithId": 1, "bookId": 1, "nass": "إنما الأعمال بالنيات"})
 
     def test_public_kg_api_rejects_abu_dawud_and_unknown_collections(self):
@@ -360,9 +362,34 @@ class KnowledgeGraphTests(SimpleTestCase):
             "aqwal": [{"alemId": 4}],
         })
 
+    def test_narrator_json_declares_utf8_and_preserves_arabic(self):
+        payload = '{"rawiId":3795,"name":"شعبة بن الحجاج","aqwal":[{"qawl":"ثقة حافظ"}]}'
+        with patch("isnad.knowledge_graph.urlopen", return_value=BytesIO(payload.encode("utf-8"))):
+            response = self.client.get("/api/v1/knowledge-graph/rawis/3795/")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "application/json; charset=utf-8")
+        self.assertIn("شعبة بن الحجاج".encode("utf-8"), response.content)
+        self.assertEqual(response.json()["aqwal"][0]["qawl"], "ثقة حافظ")
+
     def test_malformed_hadith_from_upstream_returns_bad_gateway(self):
         payload = '[]'
         with patch("isnad.knowledge_graph.urlopen", return_value=StringIO(payload)):
             response = self.client.get("/api/v1/knowledge-graph/hadiths/17154/")
 
         self.assertEqual(response.status_code, 502)
+
+
+class HadithSearchTests(APITestCase):
+    def test_bilingual_search_matches_text_and_excludes_other_collections(self):
+        from isnad.models import Hadith
+
+        fields = {"arabic_matn": "إِنَّمَا الْأَعْمَالُ بِالنِّيَّاتِ", "english_matn": "Actions are judged by intentions."}
+        Hadith.objects.create(id=1, hadith_number="15", book_title="Sahih al-Bukhari", **fields)
+        Hadith.objects.create(id=2, hadith_number="1", book_title="Sahih al-Bukhari", **fields)
+        Hadith.objects.create(id=3, hadith_number="1", book_title="Sunan Abi Dawud", **fields)
+
+        for term, expected in [("الأعمال", ["15", "1"]), ("intentions", ["15", "1"]), ("1", ["1", "15"])]:
+            with self.subTest(term=term):
+                response = self.client.get("/api/v1/hadiths/", {"search": term, "compact": "1"})
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual([row["hadith_number"] for row in response.json()["results"]], expected)

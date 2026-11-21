@@ -3,8 +3,8 @@ from collections import defaultdict
 
 from django.http import Http404
 from django.core.cache import cache
-from django.db.models import Count, Q
-from django.db.models.functions import Left
+from django.db.models import Case, Count, F, Q, Value, When
+from django.db.models.functions import Left, Replace
 from django.contrib.auth import authenticate, login, logout
 from django.middleware.csrf import get_token
 from django.views.decorators.csrf import ensure_csrf_cookie
@@ -43,6 +43,18 @@ BOOKS_CACHE_KEY = "hadith_books_catalog"
 COMPACT_TRUE = {"1", "true", "yes"}
 
 BOOK_REF_RE = re.compile(r"Book\s+(\d+)", re.I)
+
+ARABIC_SEARCH_MARKS = "ًٌٍَُِّْٰـ"
+ARABIC_SEARCH_MARKS_TABLE = str.maketrans("", "", ARABIC_SEARCH_MARKS)
+ARABIC_LETTER_RE = re.compile(r"[ء-ي]")
+
+
+def without_arabic_search_marks(field):
+    expression = F(field)
+    for mark in ARABIC_SEARCH_MARKS:
+        expression = Replace(expression, Value(mark), Value(""))
+    return expression
+
 
 
 def bukhari_hadiths():
@@ -339,10 +351,25 @@ class HadithViewSet(viewsets.ModelViewSet):
         elif book:
             queryset = queryset.filter(in_book_reference__startswith=f"Book {book},")
         if search:
-            queryset = queryset.filter(
+            matches = (
                 Q(hadith_number__icontains=search)
                 | Q(topic__icontains=search)
                 | Q(chapter_title__icontains=search)
+                | Q(english_matn__icontains=search)
+            )
+            if ARABIC_LETTER_RE.search(search):
+                unvocalized = search.translate(ARABIC_SEARCH_MARKS_TABLE)
+                queryset = queryset.alias(
+                    searchable_arabic_title=without_arabic_search_marks("chapter_title_arabic"),
+                    searchable_arabic_matn=without_arabic_search_marks("arabic_matn"),
+                )
+                matches |= (
+                    Q(searchable_arabic_title__icontains=unvocalized)
+                    | Q(searchable_arabic_matn__icontains=unvocalized)
+                )
+            queryset = queryset.filter(matches).order_by(
+                Case(When(hadith_number__iexact=search, then=Value(0)), default=Value(1)),
+                "id",
             )
         if self.action == "list" and compact:
             queryset = queryset.defer(
