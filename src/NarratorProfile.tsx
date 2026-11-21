@@ -148,15 +148,16 @@ export default function NarratorProfile({ record, source, status, onOpen, onRetr
       )}
       {status === 'loaded' && (
         <>
-          <section>
-            <p>Profile source: {source === 'knowledge_graph' ? 'Hadith Knowledge Graph' : 'Visual Isnad catalog'}</p>
-            {record.catalog_source_url && <a href={record.catalog_source_url}>Open catalog entry</a>}
-            {linkedProfile && (
-              <p><button type="button" onClick={() => onOpen(linkedProfile)}>
-                Open Hadith Knowledge Graph profile
-              </button></p>
-            )}
-          </section>
+          {(source === 'knowledge_graph' || linkedProfile) && (
+            <section>
+              {source === 'knowledge_graph' && <p>Profile source: Hadith Knowledge Graph</p>}
+              {linkedProfile && (
+                <button type="button" onClick={() => onOpen(linkedProfile)}>
+                  Open Hadith Knowledge Graph profile
+                </button>
+              )}
+            </section>
+          )}
           <section>
             <h3>{biography ? noteHeading(biography.trim()) : 'Biography'}</h3>
             <p className="narrator-source-text" {...textDirection(biography)}>
