@@ -1670,3 +1670,14 @@
 .narrator-relations button:focus-visible { outline: 2px solid #2b675c; outline-offset: -2px; }
 .narrator-relations bdi + bdi { display: block; font-family: 'Noto Naskh Arabic', serif; }
 .narrator-reader-page .narrator-profile-details section { padding-inline: 0; }
+
+.recorded-inspector > p { max-width: 70ch; color: #435e54; font-size: 13px; line-height: 1.5; }
+.recorded-edge-scroll { overflow-x: auto; border: 1px solid #dbe3dd; border-radius: 10px; background: #fff; }
+.recorded-edge-scroll table { width: 100%; border-collapse: collapse; font-size: 12px; color: #29463e; text-align: start; }
+.recorded-edge-scroll th, .recorded-edge-scroll td { padding: 10px; border-bottom: 1px solid #e7ece8; text-align: start; vertical-align: top; }
+.recorded-edge-scroll thead { background: #eef3ef; }
+.recorded-edge-scroll tbody tr:last-child > * { border-bottom: 0; }
+.recorded-edge-scroll small, .recorded-narrator bdi { display: block; }
+.recorded-edge-scroll small { margin-top: 3px; color: #536760; }
+.recorded-narrator { text-align: start; font: inherit; color: #24594f; border: 0; padding: 0; background: transparent; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+.recorded-narrator bdi[lang="ar"] { font-family: 'Noto Naskh Arabic', serif; }

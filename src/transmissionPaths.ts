@@ -88,3 +88,38 @@ export function orderChain(edges: EdgeRecord[]) {
 export function graphNarratorIds(edges: EdgeRecord[]) {
   return [...new Set(orderChain(edges))]
 }
+
+/** For the evidence inspector, retain every row and mark directed cycle membership. */
+export function describeRecordedEdges(edges: EdgeRecord[]) {
+  const studentsByTeacher = new Map<number, Set<number>>()
+  const counts = new Map<string, number>()
+  for (const edge of edges) {
+    const students = studentsByTeacher.get(edge.teacher) ?? new Set<number>()
+    students.add(edge.student)
+    studentsByTeacher.set(edge.teacher, students)
+    const pair = `${edge.teacher}:${edge.student}`
+    counts.set(pair, (counts.get(pair) ?? 0) + 1)
+  }
+
+  const reachableByStart = new Map<number, Set<number>>()
+  return edges.map(edge => {
+    let reachable = reachableByStart.get(edge.student)
+    if (!reachable) {
+      reachable = new Set([edge.student])
+      const pending = [edge.student]
+      while (pending.length) {
+        for (const next of studentsByTeacher.get(pending.pop()!) ?? []) {
+          if (reachable.has(next)) continue
+          reachable.add(next)
+          pending.push(next)
+        }
+      }
+      reachableByStart.set(edge.student, reachable)
+    }
+    return {
+      edge,
+      cycle: reachable.has(edge.teacher),
+      repeated: (counts.get(`${edge.teacher}:${edge.student}`) ?? 0) > 1,
+    }
+  })
+}

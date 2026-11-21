@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import Landing from './Landing'
-import { graphNarratorIds, groupChains, type EdgeRecord, type RouteEvidence } from './transmissionPaths'
+import { describeRecordedEdges, graphNarratorIds, groupChains, type EdgeRecord, type RouteEvidence } from './transmissionPaths'
 import NarratorProfile, { narratorDate, recordedText, type NarratorRecord, type NarratorReference } from './NarratorProfile'
 
 type IconName =
@@ -131,9 +131,13 @@ function initialsFor(name: string) {
   return `${parts[0][0]}${parts[1][0]}`.toUpperCase()
 }
 
+function isUnresolvedNarrator(id: number, grade?: string) {
+  return (id >= 800000 && id < KG_NARRATOR_OFFSET) || grade === 'Unmatched isnad name'
+}
+
 function roleOf(raw: { id: number; name?: string; grade?: string; tabaqah?: string }) {
   const blob = `${raw.name || ''} ${raw.grade || ''} ${raw.tabaqah || ''}`.toLowerCase()
-  if (raw.grade === "Unmatched isnad name") return "Unresolved"
+  if (isUnresolvedNarrator(raw.id, raw.grade)) return "Unresolved"
   if (raw.id === 1 || blob.includes('rasool') || blob.includes('prophet')) return 'Prophet'
   if (blob.includes('comp.') || blob.includes('sahabi') || blob.includes('companion')) return 'Companion'
   if (raw.id === 30001 || blob.includes('compiler')) return 'Compiler'
@@ -339,10 +343,18 @@ type ChainLayout = {
   height: number
 }
 
-function layoutChain(people: Narrator[]): ChainLayout {
+function layoutChain(people: Narrator[], showEraBands: boolean): ChainLayout {
   const count = people.length
   if (!count) {
     return { positions: [], bands: [], height: 620 }
+  }
+
+  if (!showEraBands) {
+    return {
+      positions: people.map((_, index) => ({ x: 345, y: BAND_PAD + index * (NODE_HEIGHT + NODE_GAP) })),
+      bands: [],
+      height: Math.max(620, count * (NODE_HEIGHT + NODE_GAP) + BAND_PAD),
+    }
   }
 
   let minRank = 0
@@ -432,7 +444,15 @@ export function IsnadViewer({
   const route = chains[chainIndex]
   const labelFor = (route: Route, index: number) =>
     `${route.status === 'unresolved' ? (route.edges.length === 1 ? 'Recorded edge' : 'Recorded segment') : 'Isnad'} ${index + 1}`
-  const graph = route && (
+  const repeatedNarrator = route && graphNarratorIds(route.edges).length < route.edges.length + 1
+  const graph = route && (repeatedNarrator ? (
+    <RecordedEdgeInspector
+      edges={route.edges}
+      label={labelFor(route, chainIndex)}
+      narrators={narrators}
+      onSelectNarrator={onSelectNarrator}
+    />
+  ) : (
     <IsnadGraph
       key={`${hadithNumber}-${route.edges[0].id}`}
       route={route}
@@ -443,7 +463,7 @@ export function IsnadViewer({
       hadithNumber={hadithNumber}
       tracePath={tracePath}
     />
-  )
+  ))
 
   return (
     <section className="visualizer" aria-label="Chain of narration">
@@ -467,12 +487,75 @@ export function IsnadViewer({
           {route?.status === 'unresolved' && (
             <p className="isnad-empty" role="status">Showing recorded transmissions. Their place in an isnad is unverified.</p>
           )}
-          {route?.status !== 'unresolved' && <div className="graph-actions isnad-actions" aria-label="Graph display options" role="group">
+          {route?.status !== 'unresolved' && !repeatedNarrator && <div className="graph-actions isnad-actions" aria-label="Graph display options" role="group">
             <button type="button" aria-pressed={tracePath} className={tracePath ? 'active' : ''} onClick={() => setTracePath(!tracePath)}><Icon name="branch" size={14} /> Trace path</button>
           </div>}
           {graph}
         </>
       )}
+    </section>
+  )
+}
+
+function RecordedEdgeInspector({ edges, label, narrators, onSelectNarrator }: {
+  edges: EdgeRecord[]
+  label: string
+  narrators: Narrator[]
+  onSelectNarrator: (id: number) => void
+}) {
+  const narratorsById = new Map(narrators.map(narrator => [narrator.id, narrator]))
+  const endpoint = (id: number) => {
+    const narrator = narratorsById.get(id)
+    const unresolved = !narrator || isUnresolvedNarrator(id, narrator.grade)
+    return (
+      <>
+        {narrator ? (
+          <button className="recorded-narrator" type="button" onClick={() => onSelectNarrator(id)}>
+            <bdi>{narrator.name}</bdi>
+            {narrator.arabic && narrator.arabic !== narrator.name && <bdi lang="ar">{narrator.arabic}</bdi>}
+          </button>
+        ) : <span>Narrator unavailable</span>}
+        <small>ID {id}{unresolved ? ' · Unknown / unresolved' : ''}</small>
+      </>
+    )
+  }
+
+  return (
+    <section className="isnad-graph recorded-inspector" aria-label={`${label}: recorded edge inspection`}>
+      <header className="isnad-graph-heading">
+        <h3>{label}</h3>
+        <span className="isnad-count">{graphNarratorIds(edges).length} narrator IDs · {edges.length} recorded edges</span>
+        <span className="isnad-status isnad-status-unresolved">Unresolved transmission</span>
+      </header>
+      <p>This segment revisits narrators. Each row shows one teacher-to-student relationship in import order. Any endpoint correction is attributed in the row. A cycle, repeated pair, or Prophet endpoint shown here is unverified.</p>
+      <div className="recorded-edge-scroll" tabIndex={0} role="region" aria-label="Recorded relationships">
+        <table>
+          <thead>
+            <tr><th scope="col">Sequence / edge</th><th scope="col">Teacher</th><th scope="col">Student</th><th scope="col">Evidence flags</th></tr>
+          </thead>
+          <tbody>
+            {describeRecordedEdges(edges).map(({ edge, cycle, repeated }) => (
+              <tr key={edge.id} data-edge-id={edge.id} data-teacher-id={edge.teacher} data-student-id={edge.student}>
+                <th scope="row">{edge.sequence}<small>Edge {edge.id}</small></th>
+                <td>{endpoint(edge.teacher)}</td>
+                <td>{endpoint(edge.student)}</td>
+                <td>
+                  <bdi lang="ar">{edge.terminology}</bdi>
+                  {cycle && <small>Cycle</small>}
+                  {repeated && <small>Repeated teacher–student pair</small>}
+                  {edge.correction && (
+                    <small>
+                      Stored teacher {edge.correction.original_teacher} → student {edge.correction.original_student}
+                      {' · '}<a href={edge.correction.source_url}>Correction source</a>
+                    </small>
+                  )}
+                  {(edge.teacher === 1 || edge.student === 1) && <small>Prophet endpoint · unverified</small>}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </section>
   )
 }
@@ -501,17 +584,17 @@ function IsnadGraph({
     () => graphNarratorIds(edges).flatMap(id => narrators.find(narrator => narrator.id === id) ?? []),
     [edges, narrators],
   )
-  const chainLayout = useMemo(() => layoutChain(chainNarrators), [chainNarrators])
+  const unresolvedIdentities = chainIds.some(id => isUnresolvedNarrator(id)) ||
+    chainNarrators.some(narrator => isUnresolvedNarrator(narrator.id, narrator.grade))
+  const showEraBands = route.status !== 'unresolved' && !unresolvedIdentities
+  const chainLayout = useMemo(() => layoutChain(chainNarrators, showEraBands), [chainNarrators, showEraBands])
   const positions = chainLayout.positions
   const nodes = new Map(chainNarrators.map((narrator, index) => [narrator.id, { narrator, position: positions[index] }]))
-  const repeatedNarrator = chainIds.length < edges.length + 1
-  const pairOccurrences = new Map<string, number>()
   const first = positions[0]
   const firstX = first?.x
   const firstY = first?.y
   const selectedEdgeRecord = edges.find(edge => edge.id === selectedEdge)
   const missingNarrators = chainNarrators.length !== chainIds.length
-  const unresolvedIdentities = chainIds.some(id => id >= 800000)
   const showDetails = route.evidence || missingNarrators || unresolvedIdentities || route.status === 'unresolved'
 
   useEffect(() => {
@@ -628,8 +711,7 @@ function IsnadGraph({
           <summary>Evidence details</summary>
           {route.evidence && <p><a href={route.evidence.source_url}>Source</a> · <bdi dir="auto">{route.evidence.note}</bdi></p>}
           {route.status === 'unresolved' && <p>Adjacent recorded edges are shown together when their endpoints and sequence agree. This does not establish route boundaries.</p>}
-          {repeatedNarrator && <p>The recorded sequence revisits a narrator. Repeated and cyclic links are shown as stored.</p>}
-          {unresolvedIdentities && <p>Some narrator identities are unresolved.</p>}
+          {unresolvedIdentities && <p>Unknown narrator identities are displayed without an era assignment.</p>}
           {missingNarrators && <p>Some narrator records are missing. Edges with missing endpoints cannot be drawn.</p>}
         </details>
       )}
@@ -678,22 +760,13 @@ function IsnadGraph({
                 if (!teacher || !student) return null
                 const from = teacher.position
                 const to = student.position
-                const pair = `${edge.teacher}:${edge.student}`
-                const occurrence = pairOccurrences.get(pair) ?? 0
-                pairOccurrences.set(pair, occurrence + 1)
-
-                const forward = from.y < to.y
-                const sideOffset = 24 + 18 * occurrence
-                const startX = from.x + (forward ? 105 : 210)
-                const startY = from.y + (forward ? NODE_HEIGHT : 48)
-                const endX = to.x + (forward ? 105 : 210)
-                const endY = to.y + (forward ? 0 : 22)
+                const startX = from.x + 105
+                const startY = from.y + NODE_HEIGHT
+                const endX = to.x + 105
+                const endY = to.y
                 const midY = (startY + endY) / 2
-                const curveX = Math.max(startX, endX) + sideOffset
-                const path = forward
-                  ? `M${startX} ${startY} C${startX + 22 * occurrence} ${midY}, ${endX + 22 * occurrence} ${midY}, ${endX} ${endY}`
-                  : `M${startX} ${startY} C${curveX} ${startY}, ${curveX} ${endY}, ${endX} ${endY}`
-                const labelX = forward ? (startX + endX) / 2 + 8 + 16 * occurrence : curveX
+                const path = `M${startX} ${startY} C${startX} ${midY}, ${endX} ${midY}, ${endX} ${endY}`
+                const labelX = (startX + endX) / 2 + 8
                 return (
                   <g
                     key={edge.id}

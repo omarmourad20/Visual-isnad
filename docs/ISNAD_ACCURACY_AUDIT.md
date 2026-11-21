@@ -69,3 +69,67 @@ The whole-catalog scan is structural. The source-level review is limited to the 
 - The read-only Django test client checked 21 distinct legacy hadiths, including all 13 prior corrections. It compared raw IDs and endpoints against SQLite, checked the original Arabic and English fields after UTF-8 decoding, and tested the reviewed profile links.
 - Chromium exercised the legacy reader and graph for 1, 832, 1381 and 5225, both legacy segments for 15, both reviewed routes on the indexed snapshot, withholding 32, keyboard selection, narrator-to-hadith navigation, Shuʿba’s evaluations, and a 390-pixel mobile viewport. The KG HTTP fixture confirmed that ID 17154 returns 404.
 - Captures from those runs: [832](isnad-audit-screenshots/832.png), [1381](isnad-audit-screenshots/1381.png), [5225](isnad-audit-screenshots/5225.png), [indexed 15](isnad-audit-screenshots/15-indexed.png), [Shuʿba](isnad-audit-screenshots/shuba.png), and [mobile profile](isnad-audit-screenshots/mobile.png).
+
+
+## Bukhari 7000 recorded edge inspection
+
+The cloud legacy API returned HTTP 200, 18 edges, 15 narrator IDs, no reviewed
+routes and no withheld reason. The public raw edge endpoint returned the same
+18 rows in the same order. Every displayed relationship is therefore a
+stored edge. The Windows database was unavailable and its IDs may differ.
+
+The [Arabic report](https://sunnah.com/bukhari:7000) begins
+`حَدَّثَنَا يَحْيَى، حَدَّثَنَا اللَّيْثُ، عَنْ يُونُسَ، عَنِ ابْنِ شِهَابٍ، عَنْ عُبَيْدِ اللَّهِ بْنِ عَبْدِ اللَّهِ، أَنَّ ابْنَ عَبَّاسٍ`.
+After the dream report it switches into parallel attributions using
+`وَتَابَعَهُ` and `وَقَالَ`. Some legacy catalog IDs disagree with those
+names. For example, 36033 is Shuʿayb ibn al-Layth and 23557 is ʿAwn ibn
+ʿAbbas. The stored `arabic_isnad` includes the report and following
+attributions, rather than a cleanly bounded chain. The legacy extractor
+split on transmission terms and treated some multi-word clauses as name
+candidates. Its unmatched records retained those strings verbatim.
+
+| ID | Extracted label | Why it is unresolved |
+|---:|---|---|
+| 803739 | النبي وقال الزبيدي | Ends one attribution and starts al-Zubaydi's |
+| 803740 | ابن عباس او ابا هريره | An explicit alternative between two narrators |
+| 803741 | النبي وقال شعيب واسحاق بن يحيي | Ends one attribution and names two transmitters in the next |
+| 803742 | الزهري كان ابو هريره يحدث | Includes al-Zuhri, Abu Hurayra, and a reporting clause |
+| 803743 | النبي وكان معمر لا يسنده حتي كان بعد | A Prophet reference followed by a comment on Maʿmar's attribution |
+
+The Arabic names Ibn ʿAbbas and Abu Hurayra as possible reporters from the
+Prophet in different attributions, including an explicit alternative.
+It does not substantiate any of the five stored links to the exact
+endpoints below. The links are preserved as import evidence. A normalized
+full-text or matn crosswalk against published KG Bukhari returned no match
+for this record, so no KG route was used to repair it.
+
+| Edge ID | Sequence | Recorded teacher | Recorded student | Term |
+|---:|---:|---:|---:|---|
+| 37994 | 0 | 30020 | 30001 | حدثنا |
+| 37995 | 1 | 36033 | 30020 | حدثنا |
+| 37996 | 2 | 5650 | 36033 | عن |
+| 37997 | 3 | 8194 | 5650 | عن |
+| 37998 | 4 | 5121 | 8194 | عن |
+| 37999 | 5 | 769 | 5121 | عن |
+| 38000 | 6 | 6 | 769 | عن |
+| 38001 | 7 | 23557 | 6 | عن |
+| 38002 | 8 | 803739 | 23557 | عن |
+| 38003 | 9 | 1 | 803739 | سمعت |
+| 38004 | 10 | 769 | 1 | عن |
+| 38005 | 11 | 6 | 769 | عن |
+| 38006 | 12 | 803740 | 6 | ان |
+| 38007 | 13 | 803741 | 803740 | عن |
+| 38008 | 14 | 1 | 803741 | سمعت |
+| 38009 | 15 | 803742 | 1 | عن |
+| 38010 | 16 | 803743 | 803742 | عن |
+| 38011 | 17 | 1 | 803743 | سمعت |
+
+Edges 38003, 38008, and 38011 have ID 1 as teacher. Edges 38004 and 38009
+have ID 1 as student. Edges 38000 and 38005 repeat the same directed pair
+(teacher 6, student 769). The old renderer deduplicated narrator nodes
+and then reused chronological bands and long SVG arrows on the cyclic
+segment. Its tier fallback used node position for unmatched records.
+The viewer now uses a sequence-ordered edge inspector for cyclic segments
+with exact endpoint columns and per-edge flags. Unknown identities have
+no era assignment, and linear segments with unresolved identities
+use an unbanded graph. No identities or stored edge rows are rewritten.

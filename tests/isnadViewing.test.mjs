@@ -90,12 +90,52 @@ test('profile count cards and the source proposal accordion are absent', () => {
   assert.doesNotMatch(app, /Direct teachers|Direct students|In this chain|External source proposals/)
 })
 
-test('draws all original arrows across cycles and parallel edges using one node per narrator', () => {
-  const route = groupChains([edge(1, 2, 1), edge(2, 1, 2), edge(3, 2, 1), edge(4, 1, 1)])
-  const html = render(route)
-  assert.match(html, /revisits a narrator/)
-  assert.deepEqual(renderedEdges(html), [4, 3, 2, 1])
-  assert.equal((html.match(/class="svg-node/g) ?? []).length, 2)
-  const paths = [...html.matchAll(/class="edge-hit" d="([^"]+)"/g)].map(match => match[1])
-  assert.equal(new Set(paths).size, 4)
+test('Bukhari 7000 inspects all original cyclic edges without assigning eras', () => {
+  const pairs = [
+    [30001, 30020],
+    [30020, 36033],
+    [36033, 5650],
+    [5650, 8194],
+    [8194, 5121],
+    [5121, 769],
+    [769, 6],
+    [6, 23557],
+    [23557, 803739],
+    [803739, 1],
+    [1, 769],
+    [769, 6],
+    [6, 803740],
+    [803740, 803741],
+    [803741, 1],
+    [1, 803742],
+    [803742, 803743],
+    [803743, 1],
+  ]
+  const edges = pairs.map(([student, teacher], sequence) => ({
+    ...edge(37994 + sequence, student, teacher), sequence,
+  }))
+  const ids = new Set(pairs.flat())
+  const records = [...ids].map(id => ({
+    ...narrators[0], id, name: `Record ${id}`, grade: id >= 800000 ? 'Unmatched isnad name' : '',
+  }))
+  const html = render(groupChains(edges), { hadithNumber: '7000', narrators: records })
+  assert.match(html, /15 narrator IDs · 18 recorded edges/)
+  assert.match(html, /Unknown \/ unresolved/)
+  assert.match(html, /Cycle/)
+  assert.equal((html.match(/Repeated teacher–student pair/g) ?? []).length, 2)
+  assert.equal((html.match(/Prophet endpoint · unverified/g) ?? []).length, 5)
+  assert.deepEqual(renderedEdges(html), edges.map(e => e.id))
+  assert.deepEqual([...html.matchAll(/data-teacher-id="(\d+)" data-student-id="(\d+)"/g)]
+    .map(([, teacher, student]) => [Number(student), Number(teacher)]), pairs)
+  assert.doesNotMatch(html, /network-svg|tier-bands|Source reviewed/)
+})
+
+test('a linear segment with an unmatched narrator draws its edges without era bands', () => {
+  const unknown = { ...narrators[0], id: 800000, role: 'Unresolved', grade: 'Unmatched isnad name' }
+  const html = render(groupChains([edge(4, 30001, 2), edge(5, 2, unknown.id)]), {
+    narrators: [...narrators, unknown],
+  })
+  assert.deepEqual(renderedEdges(html), [5, 4])
+  assert.match(html, /without an era assignment/)
+  assert.doesNotMatch(html, /COMPANION|SUCCESSORS/)
 })
