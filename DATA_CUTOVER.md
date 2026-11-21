@@ -2,7 +2,7 @@
 
 ## Sources
 
-The React explorer requests hadiths, narrator profiles, and chains from Django REST under `/api/v1`. In development, Vite proxies requests to Django on port 8000. The production build uses the configured `VITE_API_BASE_URL`, which currently points to the Render backend. Bukhari browsing uses the local Django database. The optional Knowledge Graph viewer uses Django’s `/api/v1/knowledge-graph/hadiths/<id>/` and `/api/v1/knowledge-graph/rawis/<id>/` endpoints. Set `HADITH_KG_API_URL` on the backend to the trusted Knowledge Graph service URL. It defaults to `http://127.0.0.1:8077` for local use.
+The React explorer requests hadiths, narrator profiles, and chains from Django REST under `/api/v1`. In development, Vite proxies requests to Django on port 8000. The production build uses the configured `VITE_API_BASE_URL`, which currently points to the Render backend. Bukhari browsing uses the local Django database. Knowledge Graph provides supplementary narrator profiles via `/api/v1/knowledge-graph/rawis/<id>/`. Its hadith endpoint serves confirmed Bukhari text and excludes unreviewed routes. The reader and graph use the local Bukhari catalog. Set `HADITH_KG_API_URL` on the backend to the trusted Knowledge Graph service URL. It defaults to `http://127.0.0.1:8077` for local use.
 
 Django uses `DATABASE_URL` when set and defaults to SQLite otherwise. Check the active deployment configuration privately to identify the database engine and storage. The cloud clone had no active database or `DATABASE_URL`.
 

@@ -10,6 +10,9 @@ export type NarratorRecord = NarratorReference & {
   aqwal?: { alemId: number; alem: string; qawl: string }[]
   aliases?: string
   biography?: string
+  profile_source?: string
+  catalog_source_url?: string
+  knowledge_graph_profile?: NarratorReference
   birth_display?: string
   death_display?: string
   birth_year?: number | null
@@ -26,7 +29,6 @@ export type NarratorRecord = NarratorReference & {
   students_inds?: string
   teachers?: NarratorReference[]
   students?: NarratorReference[]
-  transmission_students?: NarratorReference[]
 }
 
 export function recordedText(value?: string | null) {
@@ -34,11 +36,18 @@ export function recordedText(value?: string | null) {
   return /^(?:n\/?a|\[\]|[–—-])$/i.test(text) ? '' : text
 }
 
+function textDirection(value: string) {
+  if (/\p{Script=Arabic}/u.test(value) && !/\p{Script=Latin}/u.test(value)) {
+    return { lang: 'ar', dir: 'rtl' } as const
+  }
+  return { dir: 'auto' } as const
+}
+
 export function narratorDate(display?: string, year?: number | null) {
   const recorded = recordedText(display)
   if (recorded || year == null) return recorded
   if (year < 0) return `${Math.abs(year)} BH`
-  return String(year)
+  return `${year} AH`
 }
 
 function noteHeading(text: string) {
@@ -66,15 +75,17 @@ function NarratorRelationships({ label, entries, onOpen }: {
 }) {
   return (
     <details className="narrator-relationships">
-      <summary>{label} ({entries.length})</summary>
+      <summary lang="en" dir="ltr">{label} ({entries.length})</summary>
       {entries.length ? (
         <ul className="narrator-relations">
           {entries.map(entry => {
-            const missing = entry.name === null && entry.arabic_name === null
+            const name = recordedText(entry.name)
+            const arabic = recordedText(entry.arabic_name)
+            const missing = !name && !arabic
             const labels = (
               <>
-                <bdi>{recordedText(entry.name) || `Narrator #${entry.id}`}</bdi>
-                {recordedText(entry.arabic_name) && <bdi lang="ar" dir="rtl">{entry.arabic_name}</bdi>}
+                {name && <bdi {...textDirection(name)}>{name}</bdi>}
+                {arabic && <bdi lang="ar" dir="rtl">{entry.arabic_name}</bdi>}
               </>
             )
             return (
@@ -91,12 +102,14 @@ function NarratorRelationships({ label, entries, onOpen }: {
   )
 }
 
-export default function NarratorProfile({ record, status, onOpen, onRetry }: {
+export default function NarratorProfile({ record, source, status, onOpen, onRetry }: {
   record: NarratorRecord
+  source: 'local' | 'knowledge_graph'
   status: 'loading' | 'loaded' | 'error'
   onOpen: (reference: NarratorReference) => void
   onRetry: () => void
 }) {
+  const linkedProfile = record.knowledge_graph_profile
   const fields = [
     ['Birth date', narratorDate(record.birth_display, record.birth_year)],
     ['Birth place', recordedText(record.birth_place)],
@@ -108,7 +121,8 @@ export default function NarratorProfile({ record, status, onOpen, onRetry }: {
     ['Grade', recordedText(record.grade)],
   ].filter(([, value]) => value)
 
-  const biography = recordedText(record.biography)
+  const hasBiography = Boolean(recordedText(record.biography))
+  const biography = hasBiography ? record.biography ?? '' : ''
   const tags = parseNarratorTags(record.tags)
   const notes = [
     ['Aliases and kunyas', recordedText(record.aliases)],
@@ -116,13 +130,16 @@ export default function NarratorProfile({ record, status, onOpen, onRetry }: {
   ].filter(([, value]) => value)
 
   return (
-    <div className="narrator-profile-details">
+    <div className="narrator-profile-details" lang="en" dir="ltr">
       {fields.length > 0 && (
-        <dl className="narrator-facts">
-          {fields.map(([label, value]) => (
-            <div key={label}><dt>{label}</dt><dd dir="auto">{value}</dd></div>
-          ))}
-        </dl>
+        <section>
+          <h3>Profile facts</h3>
+          <dl className="narrator-facts">
+            {fields.map(([label, value]) => (
+              <div key={label}><dt>{label}</dt><dd {...textDirection(value)}>{value}</dd></div>
+            ))}
+          </dl>
+        </section>
       )}
       {status === 'loading' && <p role="status">Loading narrator details…</p>}
       {status === 'error' && (
@@ -130,43 +147,63 @@ export default function NarratorProfile({ record, status, onOpen, onRetry }: {
       )}
       {status === 'loaded' && (
         <>
+          {(source === 'knowledge_graph' || linkedProfile) && (
+            <section>
+              {source === 'knowledge_graph' && <p>Profile source: Hadith Knowledge Graph</p>}
+              {linkedProfile && (
+                <button type="button" onClick={() => onOpen(linkedProfile)}>
+                  Open Hadith Knowledge Graph profile
+                </button>
+              )}
+            </section>
+          )}
           <section>
-            <h3>{biography ? noteHeading(biography) : 'Biography'}</h3>
-            <p className="narrator-source-text" dir="auto">
-              {biography || 'No biographical notes stored for this narrator yet.'}
+            <h3>{biography ? noteHeading(biography.trim()) : 'Biography'}</h3>
+            <p className="narrator-source-text" {...textDirection(biography)}>
+              {biography || (source === 'knowledge_graph'
+                ? 'No prose biography available in this source.'
+                : 'No biographical notes stored for this narrator yet.')}
             </p>
           </section>
           {notes.map(([label, text]) => (
             <section key={label}>
               <h3>{label}</h3>
-              <p className="narrator-source-text" dir="auto">{text}</p>
+              <p className="narrator-source-text" {...textDirection(text)}>{text}</p>
             </section>
           ))}
           {tags.length > 0 && (
             <section>
               <h3>Tags</h3>
               <ul className="narrator-tag-list" role="list">
-                {tags.map(tag => <li key={tag} dir="auto">{tag}</li>)}
+                {tags.map(tag => <li key={tag} {...textDirection(tag)}>{tag}</li>)}
               </ul>
             </section>
           )}
           {!!record.aqwal?.length && (
-            <section lang="ar" dir="rtl">
-              <h3>أقوال العلماء ({record.aqwal.length})</h3>
-              {record.aqwal.map((item, index) => (
-                <div key={`${item.alemId}-${index}`}>
-                  <strong>{item.alem}</strong>
-                  <p className="narrator-source-text">{item.qawl}</p>
-                </div>
-              ))}
+            <section>
+              <h3>Scholarly evaluations ({record.aqwal.length})</h3>
+              <ul className="narrator-evaluations">
+                {record.aqwal.map((item, index) => (
+                  <li key={`${item.alemId}-${index}`}>
+                    <strong {...textDirection(item.alem ?? '')}>{item.alem}</strong>
+                    <blockquote className="narrator-source-text" {...textDirection(item.qawl ?? '')}>
+                      {item.qawl}
+                    </blockquote>
+                    {source === 'knowledge_graph' && <small>Hadith Knowledge Graph</small>}
+                  </li>
+                ))}
+              </ul>
             </section>
           )}
+          {source === 'knowledge_graph' && !record.aqwal?.length && (
+            <section><h3>Scholarly evaluations</h3><p>No evaluations listed by this source.</p></section>
+          )}
           <section aria-label="Narrator relationships">
-            <NarratorRelationships label="Teachers" entries={relationshipList(record.teachers, record.teachers_inds)} onOpen={onOpen} />
-            <NarratorRelationships label="Catalog students" entries={relationshipList(record.students, record.students_inds)} onOpen={onOpen} />
-            {!!record.transmission_students?.length && (
-              <NarratorRelationships label="Narrators linked in imported Bukhari chains" entries={record.transmission_students} onOpen={onOpen} />
-            )}
+            <p>{source === 'knowledge_graph'
+              ? 'Teachers and students are general Knowledge Graph observations and may come from other collections.'
+              : 'Teachers and students come from the narrator catalog.'}</p>
+            <NarratorRelationships label={source === 'knowledge_graph' ? 'Teachers in KG routes' : 'Teachers'} entries={relationshipList(record.teachers, record.teachers_inds)} onOpen={onOpen} />
+            <NarratorRelationships label={source === 'knowledge_graph' ? 'Students in KG routes' : 'Students'} entries={relationshipList(record.students, record.students_inds)} onOpen={onOpen} />
           </section>
         </>
       )}

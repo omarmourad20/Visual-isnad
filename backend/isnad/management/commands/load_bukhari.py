@@ -7,6 +7,7 @@ from pathlib import Path
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
+from isnad.collection_scope import BUKHARI_TITLE, BUKHARI_TITLES, is_bukhari_reference
 from isnad.models import Hadith, Narrator, TransmissionEdge
 from isnad.scholar_bios import load_cache
 from rawis_catalog import DATA_DIR, UNRESOLVED_NARRATOR_ID_START, read_rawis
@@ -40,6 +41,19 @@ PROPHET_REPORT_RE = re.compile(rf"^{PROPHET_TITLE}(?:$|\s+(?:قال|يقول)\b)
 PROPHET_ATTRIBUTION_RE = re.compile(
     rf"\s+(?:(?:انه قال|انها قالت|قالت)\s+)(?=(?:قال\s+)?{PROPHET_TITLE}\b)"
 )
+# A new attribution or an explicit alternative is not a single transmitter.
+# These forms are positive evidence of a clause, rather than just a weak
+# name match. Keep the broader token pattern out of import decisions.
+CONFIRMED_FRAGMENT_RE = re.compile(
+    r"^(?:النبي (?:وقال|وكان)\b|الزهري كان .+ يحدث$)"
+    r"|^(?:ابن عباس|ابو هريره|ابا هريره) او (?:ابن عباس|ابو هريره|ابا هريره)$"
+)
+DREAM_NARRATIVE_RE = re.compile(
+    r"(?:أَنَّ|أن)\s+(?:رَجُلاً|رَجُلًا|رجلا)[،,\s]+(?:أَتَى|أتى)\s+"
+    r"(?:رَسُولَ|رسول)\s+(?:اللَّهِ|الله)"
+)
+
+
 DIRECT_REPORT_TERMS = {"عن", "سمعت", "سمعنا", "انه سمع", "انها سمعت", "حدثني", "حدثنا", "اخبرني", "اخبرنا"}
 
 
@@ -139,8 +153,9 @@ def split_isnad_matn(arabic_text: str) -> tuple[str, str]:
         text,
     )
     cuts = [idx for quote in ('"', "«", "\u201c") if (idx := text.find(quote, 26)) != -1]
-    if narrative and narrative.start() > 20:
-        cuts.append(narrative.start())
+    for boundary in (narrative, DREAM_NARRATIVE_RE.search(text)):
+        if boundary and boundary.start() > 20:
+            cuts.append(boundary.start())
     if cuts:
         idx = min(cuts)
         return text[:idx].strip(" ،,:"), text[idx:].strip()
@@ -175,7 +190,7 @@ def _clean_person_name(name: str) -> str:
 
 
 def _looks_like_name(name: str) -> bool:
-    if not name or name in SKIP_NAME_KEYS:
+    if not name or name in SKIP_NAME_KEYS or CONFIRMED_FRAGMENT_RE.search(name):
         return False
     if re.search(r"سال |هرقل|في قوله|يحدث|فقال|كنت|قلت ", name):
         return False
@@ -197,6 +212,8 @@ def _names_from_segment(segment: str, term: str) -> list[tuple[str, str]]:
     # title is followed by the opening words of the report.
     if term in DIRECT_REPORT_TERMS and PROPHET_TITLE_RE.match(segment):
         return [("رسول الله", term)]
+    if CONFIRMED_FRAGMENT_RE.search(segment):
+        return []
 
     segment = PROPHET_ATTRIBUTION_RE.sub(" قال ", segment)
     segment = re.split(
@@ -206,6 +223,9 @@ def _names_from_segment(segment: str, term: str) -> list[tuple[str, str]]:
     )[0]
     names: list[tuple[str, str]] = []
     current_term = term
+    # At a report boundary, the named subject of "كان يحدث" is the
+    # transmitter. The reporting predicate itself is not part of the name.
+    segment = re.sub(r"(\sان\s+[^،,:]+?)\s+كان يحدث$", r"\1", segment)
     clauses = re.split(r"\s+ان\s+", segment)
     for index, clause in enumerate(clauses):
         clause = _clean_person_name(clause)
@@ -279,6 +299,8 @@ def extract_chains(isnad: str) -> list[list[tuple[str, str]]]:
                 break
             extracted = _names_from_segment(piece, pending_term)
             if not extracted:
+                if CONFIRMED_FRAGMENT_RE.search(piece.strip()):
+                    break
                 if re.search(r"في قوله|انها قالت|انه قال", piece):
                     break
                 continue
@@ -298,8 +320,16 @@ def extract_chains(isnad: str) -> list[list[tuple[str, str]]]:
     return chains
 
 
+# Catalog cells sometimes truncate the blessing after "عليه". Remove a
+# recognizable phrase while retaining the same word in real names and aliases.
+NAME_HONORIFIC_RE = re.compile(
+    r"\b(?:صل[ىي] الله عليه(?:ا|ما|م|ن)?(?: و?سلم)?|"
+    r"رض[ىي] الله عنه(?:ا|ما|م|ن)?|عليه(?:ا|ما|م|ن)? السلام|رحمه(?:ا|ما|م|ن)? الله)\b"
+)
+
+
 def name_key(name: str) -> str:
-    name = normalize_arabic(name.replace("ـ", ""))
+    name = NAME_HONORIFIC_RE.sub(" ", normalize_arabic(name.replace("ـ", "")))
     name = re.sub(r"\bام المومنين\b", " ", name)
     name = re.sub(r"\bعبدالله\b", "عبد الله", name)
     return " ".join(
@@ -393,6 +423,9 @@ class ChainMatcher:
                 if span[-1] in {"عبد", "بن", "بنت", "ابو", "ام"}:
                     continue
                 key = " ".join(span)
+                # A stranded honorific token is never a partial-name match.
+                if key == "عليه" and key != full_name:
+                    continue
                 substantive = len(span) - int(span[0] in {"ابو", "ام", "عبد", "بن"})
                 if key == full_name:
                     score = self.exact_name_score(span)
@@ -700,7 +733,8 @@ class Command(BaseCommand):
         for row in rows:
             reference = (row.get("Reference") or "").strip()
             number_match = HADITH_NO_RE.search(reference)
-            if not number_match:
+            if (not number_match or not is_bukhari_reference(reference)
+                    or (row.get("Book") or BUKHARI_TITLE).strip() not in BUKHARI_TITLES):
                 raise CommandError(f"Invalid Bukhari reference: {reference!r}.")
             number = number_match.group(1).lower()
             if number in seen:
@@ -739,7 +773,7 @@ class Command(BaseCommand):
                     hadith_number=str(hadith_number)[:50],
                     book_number=int(book_match.group(1)) if book_match else None,
                     in_book_reference=in_book_reference,
-                    book_title=(row.get("Book") or "Sahih al-Bukhari")[:255],
+                    book_title=(row.get("Book") or BUKHARI_TITLE).strip(),
                     chapter_number=(row.get("Chapter_Number") or "")[:50],
                     chapter_title=chapter_en,
                     chapter_title_arabic=(row.get("Chapter_Title_Arabic") or "")[:255],

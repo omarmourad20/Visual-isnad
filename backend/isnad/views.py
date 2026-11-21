@@ -1,9 +1,10 @@
 import re
 from collections import defaultdict
 
+from django.http import Http404
 from django.core.cache import cache
-from django.db.models import Count, Q
-from django.db.models.functions import Left
+from django.db.models import Case, Count, F, Q, TextField, Value, When
+from django.db.models.functions import Left, Replace
 from django.contrib.auth import authenticate, login, logout
 from django.middleware.csrf import get_token
 from django.views.decorators.csrf import ensure_csrf_cookie
@@ -17,16 +18,24 @@ from rest_framework.response import Response
 from rawis_catalog import UNRESOLVED_NARRATOR_ID_START
 
 from .bukhari_books import BUKHARI_BOOKS
+from .collection_scope import BUKHARI_TITLES
 from .editor_auth import issue_editor_token
 from .permissions import StaffWritePermission
 from .throttles import LoginRateThrottle
 from .models import Hadith, Narrator, TransmissionEdge
+from .edge_schema import has_chain_index
+from .reviewed_routes import (
+    apply_path_identity_review, correct_reviewed_legacy_route, describe_reviewed_routes,
+    ibn_ulayya_supplement, recorded_identity_flags, route_evidence, supplemental_profile, withheld_route_reason,
+)
+from .source_api import source_candidates
 from .serializers import (
     COMPACT_NARRATOR_FIELDS,
     CompactNarratorSerializer,
     HadithListSerializer,
     HadithSerializer,
     NarratorSerializer,
+    LegacyTransmissionEdgeSerializer,
     TransmissionEdgeSerializer,
 )
 
@@ -35,17 +44,33 @@ COMPACT_TRUE = {"1", "true", "yes"}
 
 BOOK_REF_RE = re.compile(r"Book\s+(\d+)", re.I)
 
+ARABIC_SEARCH_MARKS = "ًٌٍَُِّْٰـ"
+ARABIC_SEARCH_MARKS_TABLE = str.maketrans("", "", ARABIC_SEARCH_MARKS)
+ARABIC_LETTER_RE = re.compile(r"[ء-ي]")
+
+
+def without_arabic_search_marks(field):
+    expression = F(field)
+    for mark in ARABIC_SEARCH_MARKS:
+        expression = Replace(expression, Value(mark), Value(""), output_field=TextField())
+    return expression
+
+
+
+def bukhari_hadiths():
+    return Hadith.objects.filter(book_title__in=BUKHARI_TITLES)
+
 
 def hadith_by_pk(hadith_ref: str | None) -> Hadith | None:
     if not hadith_ref or not str(hadith_ref).isdecimal():
         return None
-    return Hadith.objects.filter(pk=hadith_ref).first()
+    return bukhari_hadiths().filter(pk=hadith_ref).first()
 
 
 def hadith_by_number(hadith_ref: str | None) -> Hadith | None:
     if not hadith_ref:
         return None
-    return Hadith.objects.filter(hadith_number=str(hadith_ref)).first()
+    return bukhari_hadiths().filter(hadith_number=str(hadith_ref)).first()
 
 
 def resolve_hadith_lookup(lookup: str | None) -> Hadith | None:
@@ -54,16 +79,37 @@ def resolve_hadith_lookup(lookup: str | None) -> Hadith | None:
 
 
 def chain_payload(hadith: Hadith) -> dict:
-    edges = list(
-        TransmissionEdge.objects.filter(hadith=hadith)
-        .order_by("sequence")
-        .only("id", "teacher_id", "student_id", "hadith_id", "terminology", "sequence", "chain_index")
-    )
-    narrator_ids = {edge.teacher_id for edge in edges} | {edge.student_id for edge in edges}
-    narrators = Narrator.objects.filter(id__in=narrator_ids).only(*COMPACT_NARRATOR_FIELDS)
+    queryset = TransmissionEdge.objects.filter(hadith=hadith).order_by("sequence", "id")
+    indexed_schema = has_chain_index(queryset.db)
+    serializer = TransmissionEdgeSerializer if indexed_schema else LegacyTransmissionEdgeSerializer
+    if not indexed_schema:
+        queryset = queryset.defer("chain_index")
+    edges = list(queryset)
+    raw_edges = serializer(edges, many=True).data
+    display_edges = correct_reviewed_legacy_route(hadith, raw_edges)
+    if display_edges is raw_edges:
+        display_edges = apply_path_identity_review(hadith, raw_edges)
+    narrator_ids = {edge[field] for edge in display_edges for field in ("teacher", "student")}
+    narrators = list(Narrator.objects.filter(id__in=narrator_ids).only(*COMPACT_NARRATOR_FIELDS))
+    if display_edges is not raw_edges:
+        stored_ids = {person.pk for person in narrators}
+        # Only the documented supplemental narrator can be absent in the legacy catalog.
+        for narrator_id in narrator_ids - stored_ids:
+            profile = supplemental_profile(narrator_id)
+            if profile is not None:
+                narrators.append(profile)
+        if {person.pk for person in narrators} != narrator_ids:
+            display_edges = raw_edges
+            original_ids = {edge[field] for edge in raw_edges for field in ("teacher", "student")}
+            narrators = list(Narrator.objects.filter(id__in=original_ids).only(*COMPACT_NARRATOR_FIELDS))
     return {
         "narrators": CompactNarratorSerializer(narrators, many=True).data,
-        "edges": TransmissionEdgeSerializer(edges, many=True).data,
+        "edges": display_edges,
+        "withheld_route_reason": withheld_route_reason(hadith, raw_edges),
+        "reviewed_routes": describe_reviewed_routes(hadith, raw_edges, display_edges),
+        "recorded_identity_flags": recorded_identity_flags(hadith, raw_edges),
+        "chain_index_available": indexed_schema,
+        "chain_boundaries_recorded": indexed_schema and all(edge.chain_index is not None for edge in edges),
     }
 
 
@@ -73,7 +119,7 @@ def book_catalog() -> list[dict]:
         return cached
 
     counted = list(
-        Hadith.objects.exclude(book_number=None)
+        bukhari_hadiths().exclude(book_number=None)
         .values("book_number")
         .annotate(count=Count("id"))
         .order_by("book_number")
@@ -82,7 +128,7 @@ def book_catalog() -> list[dict]:
 
     if not counts:
         fallback: dict[int, int] = defaultdict(int)
-        for ref in Hadith.objects.values_list("in_book_reference", flat=True).iterator(chunk_size=2000):
+        for ref in bukhari_hadiths().values_list("in_book_reference", flat=True).iterator(chunk_size=2000):
             match = BOOK_REF_RE.search(ref or "")
             if match:
                 fallback[int(match.group(1))] += 1
@@ -165,8 +211,22 @@ class NarratorViewSet(viewsets.ModelViewSet):
         return NarratorSerializer
 
     def retrieve(self, request, *args, **kwargs):
-        narrator = self.get_object()
+        try:
+            narrator = self.get_object()
+        except Http404:
+            narrator = supplemental_profile(self.kwargs[self.lookup_field])
+            if narrator is None:
+                raise
         data = self.get_serializer(narrator).data
+        if narrator._state.adding:
+            data["profile_source"] = ibn_ulayya_supplement()["source"]
+            data["catalog_source_url"] = data["profile_source"]
+        elif narrator.pk == 20020:
+            data["catalog_source_url"] = "https://muslimscholars.info/manage.php?ID=20020&submit=scholar"
+            # The profile audit corroborated the identity across the catalogs.
+            data["knowledge_graph_profile"] = {
+                "id": 1003795, "name": None, "arabic_name": "شعبة بن الحجاج بن الورد",
+            }
 
         def related_ids(field):
             ids = []
@@ -183,7 +243,10 @@ class NarratorViewSet(viewsets.ModelViewSet):
         # Keep imported graph evidence separate from the catalog's own
         # student list. Synthetic unresolved IDs are not named students.
         transmission_students = list(
-            TransmissionEdge.objects.filter(teacher=narrator, student_id__lt=UNRESOLVED_NARRATOR_ID_START)
+            TransmissionEdge.objects.filter(
+                hadith__book_title__in=BUKHARI_TITLES,
+                teacher=narrator, student_id__lt=UNRESOLVED_NARRATOR_ID_START,
+            )
             .exclude(student_id=narrator.pk)
             .order_by("student_id")
             .values_list("student_id", flat=True)
@@ -206,6 +269,22 @@ class NarratorViewSet(viewsets.ModelViewSet):
         data["teachers"] = summarize(teachers)
         data["students"] = summarize(students)
         data["transmission_students"] = summarize(transmission_students)
+        if request.query_params.get("evidence") == "1":
+            links = []
+            candidates = [url for url, review in route_evidence().items() if review.get("lengths")]
+            for hadith in bukhari_hadiths().filter(reference_url__in=candidates).order_by("id"):
+                payload = chain_payload(hadith)
+                relevant_ids = {
+                    edge["id"] for edge in payload["edges"] if narrator.pk in (edge["student"], edge["teacher"])
+                }
+                reviewed_edge_id = next((
+                    edge_id for route in payload["reviewed_routes"] if route["status"] == "reviewed"
+                    for edge_id in route["edge_ids"] if edge_id in relevant_ids
+                ), None)
+                if reviewed_edge_id is not None:
+                    links.append({"id": hadith.pk, "hadith_number": hadith.hadith_number,
+                                  "reference_url": hadith.reference_url, "edge_id": reviewed_edge_id})
+            data["reviewed_bukhari_hadiths"] = links
         return Response(data)
 
     def get_queryset(self):
@@ -259,7 +338,7 @@ class HadithViewSet(viewsets.ModelViewSet):
         return HadithSerializer
 
     def get_queryset(self):
-        queryset = super().get_queryset()
+        queryset = bukhari_hadiths().order_by("id")
         search = self.request.query_params.get("search")
         number = self.request.query_params.get("hadith_number")
         book = self.request.query_params.get("book")
@@ -273,10 +352,25 @@ class HadithViewSet(viewsets.ModelViewSet):
         elif book:
             queryset = queryset.filter(in_book_reference__startswith=f"Book {book},")
         if search:
-            queryset = queryset.filter(
+            matches = (
                 Q(hadith_number__icontains=search)
                 | Q(topic__icontains=search)
                 | Q(chapter_title__icontains=search)
+                | Q(english_matn__icontains=search)
+            )
+            if ARABIC_LETTER_RE.search(search):
+                unvocalized = search.translate(ARABIC_SEARCH_MARKS_TABLE)
+                queryset = queryset.alias(
+                    searchable_arabic_title=without_arabic_search_marks("chapter_title_arabic"),
+                    searchable_arabic_matn=without_arabic_search_marks("arabic_matn"),
+                )
+                matches |= (
+                    Q(searchable_arabic_title__icontains=unvocalized)
+                    | Q(searchable_arabic_matn__icontains=unvocalized)
+                )
+            queryset = queryset.filter(matches).order_by(
+                Case(When(hadith_number__iexact=search, then=Value(0)), default=Value(1)),
+                "id",
             )
         if self.action == "list" and compact:
             queryset = queryset.defer(
@@ -294,6 +388,20 @@ class HadithViewSet(viewsets.ModelViewSet):
             data.update(chain_payload(instance))
         return Response(data)
 
+    @action(detail=True, methods=["get"], url_path="sources")
+    def sources(self, request, *args, **kwargs):
+        state, candidates = source_candidates(self.get_object())
+        if state != "available":
+            return Response({"count": 0, "next": None, "previous": None, "results": [], "status": state})
+        response = self.get_paginated_response(self.paginate_queryset(candidates))
+        response.data["status"] = "available"
+        return response
+
+    @action(detail=True, methods=["get"], url_path="source-routes")
+    def source_routes(self, request, *args, **kwargs):
+        self.get_object()
+        return Response({"error": "No reviewed external routes are available"}, status=404)
+
     @action(detail=False, methods=["get"], url_path="books")
     def books(self, request):
         return Response(book_catalog())
@@ -302,8 +410,8 @@ class HadithViewSet(viewsets.ModelViewSet):
     def bootstrap(self, request):
         books = book_catalog()
         first = (
-            Hadith.objects.filter(hadith_number="1").first()
-            or Hadith.objects.order_by("id").first()
+            bukhari_hadiths().filter(hadith_number="1").first()
+            or bukhari_hadiths().order_by("id").first()
         )
         if first is None:
             return Response({"books": books, "hadith": None, "narrators": [], "edges": []})
@@ -314,17 +422,32 @@ class HadithViewSet(viewsets.ModelViewSet):
 
 
 class TransmissionEdgeViewSet(viewsets.ModelViewSet):
-    queryset = TransmissionEdge.objects.all()
+    queryset = TransmissionEdge.objects.order_by("id")
     serializer_class = TransmissionEdgeSerializer
     permission_classes = [StaffWritePermission]
 
+    def initial(self, request, *args, **kwargs):
+        super().initial(request, *args, **kwargs)
+        self.indexed_schema = has_chain_index(self.queryset.db)
+        if not self.indexed_schema and request.method not in {"GET", "HEAD", "OPTIONS"}:
+            from rest_framework.exceptions import APIException
+
+            error = APIException("Transmission edge editing requires the chain_index schema.")
+            error.status_code = 409
+            raise error
+
+    def get_serializer_class(self):
+        return TransmissionEdgeSerializer if self.indexed_schema else LegacyTransmissionEdgeSerializer
+
     def get_queryset(self):
-        queryset = super().get_queryset()
+        queryset = super().get_queryset().filter(hadith__book_title__in=BUKHARI_TITLES)
+        if not self.indexed_schema:
+            queryset = queryset.defer("chain_index")
         hadith_number = self.request.query_params.get("hadith_number")
         hadith_id = self.request.query_params.get("hadith_id")
         hadith = hadith_by_number(hadith_number) if hadith_number else hadith_by_pk(hadith_id)
         if hadith_number or hadith_id:
             if hadith is None:
                 return queryset.none()
-            queryset = queryset.filter(hadith=hadith).order_by("sequence")
+            queryset = queryset.filter(hadith=hadith).order_by("sequence", "id")
         return queryset

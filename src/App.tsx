@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import Landing from './Landing'
-import { groupChains, orderChain, type EdgeRecord } from './transmissionPaths'
+import { describeRecordedEdges, graphNarratorIds, groupChains, type EdgeRecord, type RouteEvidence } from './transmissionPaths'
 import NarratorProfile, { narratorDate, recordedText, type NarratorRecord, type NarratorReference } from './NarratorProfile'
 
 type IconName =
@@ -23,14 +23,8 @@ type Narrator = {
 
 const KG_NARRATOR_OFFSET = 1_000_000
 
-type KnowledgeGraphChain = {
-  sanad_id: number
-  grade: string | null
-  narrators: NarratorRecord[]
-  edges: EdgeRecord[]
-}
-
 type KnowledgeGraphNarrator = {
+  rawiId?: number
   name: string
   nickname?: string
   nasab?: string
@@ -41,19 +35,23 @@ type KnowledgeGraphNarrator = {
   deathYear?: number
   deathPlace?: string
   aqwal?: NarratorRecord['aqwal']
+  biography?: string
   teachers?: { id: number; name: string }[]
   students?: { id: number; name: string }[]
 }
 
 function mapKnowledgeGraphNarrator(id: number, raw: KnowledgeGraphNarrator) {
+  if (raw.rawiId != null && Number(raw.rawiId) !== id - KG_NARRATOR_OFFSET) {
+    throw new Error('Knowledge Graph returned a different narrator')
+  }
   const reference = (person: { id: number; name: string }): NarratorReference => ({
     id: KG_NARRATOR_OFFSET + person.id,
-    name: person.name,
-    arabic_name: null,
+    name: null,
+    arabic_name: person.name,
   })
   return mapNarrator({
     id,
-    name: raw.nickname || raw.name,
+    name: raw.name || raw.nickname || null,
     arabic_name: raw.name,
     aliases: [raw.nickname, raw.nasab].filter(Boolean).join(' · '),
     grade: raw.rank,
@@ -63,6 +61,7 @@ function mapKnowledgeGraphNarrator(id: number, raw: KnowledgeGraphNarrator) {
     death_year: raw.deathYear,
     death_place: raw.deathPlace,
     aqwal: raw.aqwal,
+    biography: raw.biography,
     teachers: raw.teachers?.map(reference),
     students: raw.students?.map(reference),
   })
@@ -91,6 +90,8 @@ type HadithRecord = {
   chapter_title?: string
   chapter_title_arabic?: string
   arabic_matn?: string
+  withheld_route_reason?: string | null
+  recorded_identity_flags?: Record<number, string>
   arabic_isnad?: string
   arabic_full?: string
   english_matn?: string
@@ -131,9 +132,13 @@ function initialsFor(name: string) {
   return `${parts[0][0]}${parts[1][0]}`.toUpperCase()
 }
 
+function isUnresolvedNarrator(id: number, grade?: string) {
+  return (id >= 800000 && id < KG_NARRATOR_OFFSET) || grade === 'Unmatched isnad name'
+}
+
 function roleOf(raw: { id: number; name?: string; grade?: string; tabaqah?: string }) {
   const blob = `${raw.name || ''} ${raw.grade || ''} ${raw.tabaqah || ''}`.toLowerCase()
-  if (raw.grade === "Unmatched isnad name") return "Unresolved"
+  if (isUnresolvedNarrator(raw.id, raw.grade)) return "Unresolved"
   if (raw.id === 1 || blob.includes('rasool') || blob.includes('prophet')) return 'Prophet'
   if (blob.includes('comp.') || blob.includes('sahabi') || blob.includes('companion')) return 'Companion'
   if (raw.id === 30001 || blob.includes('compiler')) return 'Compiler'
@@ -150,29 +155,12 @@ const GENERATION_RANK: Record<Generation, number> = {
   scholar: 3,
 }
 
-function deathYearAh(person: Narrator) {
-  const match = /(^|\s)(\d+)\s*AH\b/i.exec(person.record.death_display ?? '')
-  if (match) return Number(match[2])
-  const year = person.record.death_year
-  return !person.record.death_display && year != null && year > 0 ? year : null
-}
-
-function generationOf(person: Narrator, index: number, count: number): Generation {
+function generationOf(person: Narrator): Generation | null {
   if (person.role === 'Prophet' || person.id === 1) return 'prophet'
   if (person.role === 'Companion') return 'companion'
-  if (person.role === 'Compiler' || person.id === 30001) return 'scholar'
   if (person.role === 'Successor') return 'successor'
-  const death = deathYearAh(person)
-  if (death != null) {
-    if (death <= 50) return 'companion'
-    if (death <= 180) return 'successor'
-    return 'scholar'
-  }
-  if (index >= count - 1) return 'scholar'
-  const share = index / Math.max(1, count - 1)
-  if (share < 0.28) return 'companion'
-  if (share < 0.68) return 'successor'
-  return 'scholar'
+  if (person.role === 'Compiler' || person.id === 30001) return 'scholar'
+  return null
 }
 
 function cleanPlace(value?: string) {
@@ -297,11 +285,11 @@ async function fetchJson(path: string, init?: RequestInit) {
   }
   if (response.status === 204) return null
   const data = await response.json()
-  if (data && typeof data.csrfToken === 'string' && data.csrfToken) {
+  if (path.startsWith('/auth/') && data && typeof data.csrfToken === 'string' && data.csrfToken) {
     sessionCsrf = data.csrfToken
     delete data.csrfToken
   }
-  if (data && typeof data.token === 'string' && data.token) {
+  if (path === '/auth/login/' && data && typeof data.token === 'string' && data.token) {
     storeEditorToken(data.token)
     delete data.token
   }
@@ -322,7 +310,7 @@ const TIER_LABELS: Record<Generation, string> = {
   scholar: 'HADITH SCHOLARS',
 }
 
-const NODE_HEIGHT = 58
+const NODE_HEIGHT = 72
 const NODE_GAP = 42
 const BAND_PAD = 16
 const BAND_GAP = 8
@@ -339,19 +327,22 @@ type ChainLayout = {
   height: number
 }
 
-function layoutChain(people: Narrator[]): ChainLayout {
+function layoutChain(people: Narrator[], showEraBands: boolean): ChainLayout {
   const count = people.length
   if (!count) {
     return { positions: [], bands: [], height: 620 }
   }
 
-  let minRank = 0
-  const tiers = people.map((person, index) => {
-    const guessed = generationOf(person, index, count)
-    const rank = Math.max(minRank, GENERATION_RANK[guessed])
-    minRank = rank
-    return TIER_ORDER[rank]
-  })
+  const tiers = people.map(generationOf)
+  const supportedTiers = tiers.every((tier): tier is Generation => tier !== null)
+    && tiers.every((tier, index) => index === 0 || GENERATION_RANK[tiers[index - 1]!] <= GENERATION_RANK[tier!])
+  if (!showEraBands || !supportedTiers) {
+    return {
+      positions: people.map((_, index) => ({ x: 345, y: BAND_PAD + index * (NODE_HEIGHT + NODE_GAP) })),
+      bands: [],
+      height: Math.max(620, count * (NODE_HEIGHT + NODE_GAP) + BAND_PAD),
+    }
+  }
 
   const grouped = new Map<Generation, number[]>()
   TIER_ORDER.forEach((tier) => grouped.set(tier, []))
@@ -405,36 +396,532 @@ function Icon({ name, size = 18 }: { name: IconName; size?: number }) {
   )
 }
 
+type Route = ReturnType<typeof groupChains>[number]
+
+const ROUTE_STATUS: Record<Route['status'], string> = {
+  reviewed: 'Source reviewed',
+  recorded: 'Recorded route — not yet reviewed',
+  legacy_segment: 'Incomplete route',
+  unresolved: 'Unresolved transmission',
+}
+
+export function IsnadViewer({
+  chains, chainIndex, onSelectChain, narrators,
+  hadithNumber, waiting, emptyReason, selectedId, onSelectNarrator, identityFlags = {},
+}: {
+  chains: Route[]
+  chainIndex: number
+  onSelectChain: (index: number) => void
+  narrators: Narrator[]
+  hadithNumber?: string
+  waiting: boolean
+  emptyReason?: string
+  selectedId: number | null
+  onSelectNarrator: (id: number) => void
+  identityFlags?: Record<number, string>
+}) {
+  const [tracePath, setTracePath] = useState(false)
+  const route = chains[chainIndex]
+  const labelFor = (route: Route, index: number) =>
+    `${route.status === 'unresolved' ? (route.edges.length === 1 ? 'Recorded edge' : 'Recorded segment') : 'Isnad'} ${index + 1}`
+  const repeatedNarrator = route && graphNarratorIds(route.edges).length < route.edges.length + 1
+  const evidenceGraph = route && (repeatedNarrator ||
+    route.edges.some(edge => identityFlags[edge.student] || identityFlags[edge.teacher]))
+  const graph = route && (evidenceGraph ? (
+    <RecordedEvidenceGraph
+      edges={route.edges}
+      label={labelFor(route, chainIndex)}
+      narrators={narrators}
+      identityFlags={identityFlags}
+      onSelectNarrator={onSelectNarrator}
+    />
+  ) : (
+    <IsnadGraph
+      key={`${hadithNumber}-${route.edges[0].id}`}
+      route={route}
+      label={labelFor(route, chainIndex)}
+      narrators={narrators}
+      selectedId={selectedId}
+      onSelectNarrator={onSelectNarrator}
+      hadithNumber={hadithNumber}
+      tracePath={tracePath}
+    />
+  ))
+
+  return (
+    <section className="visualizer" aria-label="Chain of narration">
+      <div className="visualizer-toolbar">
+        <h2>Chain of narration</h2>
+        {chains.length > 1 && (
+          <label className="isnad-picker">
+            <span>Show</span>
+            <select aria-label="Select isnad" value={chainIndex} onChange={event => onSelectChain(Number(event.target.value))}>
+              {chains.map((option, index) => (
+                <option key={option.edges[0].id} value={index}>{labelFor(option, index)}</option>
+              ))}
+            </select>
+          </label>
+        )}
+      </div>
+      {!chains.length ? (
+        <p className="isnad-empty" role="status">{waiting ? 'Loading isnad…' : emptyReason || 'No transmission route is available for this hadith.'}</p>
+      ) : (
+        <>
+          {route?.status === 'unresolved' && (
+            <p className="isnad-empty" role="status">Showing recorded transmissions. Their place in an isnad is unverified.</p>
+          )}
+          {route?.status !== 'unresolved' && !evidenceGraph && <div className="graph-actions isnad-actions" aria-label="Graph display options" role="group">
+            <button type="button" aria-pressed={tracePath} className={tracePath ? 'active' : ''} onClick={() => setTracePath(!tracePath)}><Icon name="branch" size={14} /> Trace path</button>
+          </div>}
+          {graph}
+        </>
+      )}
+    </section>
+  )
+}
+
+function RecordedEvidenceGraph({ edges, label, narrators, identityFlags, onSelectNarrator }: {
+  edges: EdgeRecord[]
+  label: string
+  narrators: Narrator[]
+  identityFlags: Record<number, string>
+  onSelectNarrator: (id: number) => void
+}) {
+  const people = new Map(narrators.map(narrator => [narrator.id, narrator]))
+  const rows = describeRecordedEdges(edges)
+  const card = (id: number) => {
+    const fragment = identityFlags[id]
+    if (fragment) return <div className="recorded-node fragment"><strong>Source fragment</strong><small>{fragment} · ID {id}</small></div>
+    const narrator = people.get(id)
+    if (!narrator) return <div className="recorded-node fragment">Unknown identity · ID {id}</div>
+    return (
+      <button type="button" className="recorded-node" onClick={() => onSelectNarrator(id)}>
+        <strong dir="auto">{narrator.name}</strong>
+        {narrator.arabic !== narrator.name && <bdi lang="ar">{narrator.arabic}</bdi>}
+        <small>ID {id}{isUnresolvedNarrator(id, narrator.grade) ? ' · Unknown / unresolved' : ' · Catalog label'}</small>
+      </button>
+    )
+  }
+
+  return (
+    <section className="isnad-graph" aria-label={`${label}: unverified evidence graph`}>
+      <header className="isnad-graph-heading">
+        <h3>{label}</h3>
+        <span className="isnad-count">{graphNarratorIds(edges).length} recorded endpoint IDs · {edges.length} recorded edges</span>
+        <span className="isnad-status isnad-status-unresolved">Unresolved transmission</span>
+      </header>
+      <p className="recorded-graph-note">Each arrow is one imported teacher-to-student edge. Cards may repeat. These edges do not establish a continuous isnad.</p>
+      <ol className="recorded-graph">
+        {rows.map(({ edge, cycle, repeated }) => (
+          <li key={edge.id} data-edge-id={edge.id} data-teacher-id={edge.teacher} data-student-id={edge.student}>
+            <small className="recorded-edge-caption">
+              Edge {edge.id}{cycle && ' · Cycle'}{repeated && ' · Repeated pair'}
+              {(edge.teacher === 1 || edge.student === 1) && ' · Prophet endpoint unverified'}
+            </small>
+            <div className="recorded-link">
+              {card(edge.teacher)}
+              <span className="recorded-arrow" role="img" aria-label="Recorded direction: teacher to student">
+                <svg viewBox="0 0 44 20" aria-hidden="true"><path d="M2 10h38" strokeDasharray="4 3" /><path d="m34 4 6 6-6 6" /></svg>
+              </span>
+              {card(edge.student)}
+            </div>
+          </li>
+        ))}
+      </ol>
+      <details className="isnad-evidence">
+        <summary>Inspect original import evidence</summary>
+        <RecordedEdgeInspector edges={edges} narrators={narrators} identityFlags={identityFlags} onSelectNarrator={onSelectNarrator} />
+      </details>
+    </section>
+  )
+}
+
+function RecordedEdgeInspector({ edges, narrators, identityFlags, onSelectNarrator }: {
+  edges: EdgeRecord[]
+  identityFlags: Record<number, string>
+  narrators: Narrator[]
+  onSelectNarrator: (id: number) => void
+}) {
+  const narratorsById = new Map(narrators.map(narrator => [narrator.id, narrator]))
+  const endpoint = (id: number) => {
+    const narrator = narratorsById.get(id)
+    const unresolved = !narrator || isUnresolvedNarrator(id, narrator.grade)
+    return (
+      <>
+        {narrator && identityFlags[id] ? <bdi lang="ar">{narrator.arabic || narrator.name}</bdi> : narrator ? (
+          <button className="recorded-narrator" type="button" onClick={() => onSelectNarrator(id)}>
+            <bdi>{narrator.name}</bdi>
+            {narrator.arabic && narrator.arabic !== narrator.name && <bdi lang="ar">{narrator.arabic}</bdi>}
+          </button>
+        ) : <span>Narrator unavailable</span>}
+        <small>ID {id}{unresolved ? ' · Unknown / unresolved' : ''}</small>
+      </>
+    )
+  }
+
+  return (
+    <section className="recorded-inspector" aria-label="Recorded edge inspection">
+      <p>Original labels may contain source fragments. Cycles, repeated pairs, and Prophet endpoints are unverified.</p>
+      <div className="recorded-edge-scroll" tabIndex={0} role="region" aria-label="Recorded relationships">
+        <table>
+          <thead>
+            <tr><th scope="col">Sequence / edge</th><th scope="col">Teacher</th><th scope="col">Student</th><th scope="col">Evidence flags</th></tr>
+          </thead>
+          <tbody>
+            {describeRecordedEdges(edges).map(({ edge, cycle, repeated }) => (
+              <tr key={edge.id}>
+                <th scope="row">{edge.sequence}<small>Edge {edge.id}</small></th>
+                <td>{endpoint(edge.teacher)}</td>
+                <td>{endpoint(edge.student)}</td>
+                <td>
+                  <bdi lang="ar">{edge.terminology}</bdi>
+                  {cycle && <small>Cycle</small>}
+                  {repeated && <small>Repeated teacher–student pair</small>}
+                  {edge.correction && (
+                    <small>
+                      Stored teacher {edge.correction.original_teacher} → student {edge.correction.original_student}
+                      {' · '}<a href={edge.correction.source_url}>Correction source</a>
+                    </small>
+                  )}
+                  {(edge.teacher === 1 || edge.student === 1) && <small>Prophet endpoint · unverified</small>}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  )
+}
+
+function IsnadGraph({
+  route, label, narrators, selectedId, onSelectNarrator, hadithNumber, tracePath,
+}: {
+  route: Route
+  label: string
+  narrators: Narrator[]
+  selectedId: number | null
+  onSelectNarrator: (id: number) => void
+  hadithNumber?: string
+  tracePath: boolean
+}) {
+  const { edges } = route
+  const graphId = useId()
+  const [zoom, setZoom] = useState(100)
+  const [selectedEdge, setSelectedEdge] = useState<number | null>(null)
+  const zoomRef = useRef(100)
+  const graphCanvasRef = useRef<HTMLDivElement>(null)
+  zoomRef.current = zoom
+  const graphScale = zoom / 100
+  const chainIds = graphNarratorIds(edges)
+  const chainNarrators = useMemo(
+    () => graphNarratorIds(edges).flatMap(id => narrators.find(narrator => narrator.id === id) ?? []),
+    [edges, narrators],
+  )
+  const unresolvedIdentities = chainIds.some(id => isUnresolvedNarrator(id)) ||
+    chainNarrators.some(narrator => isUnresolvedNarrator(narrator.id, narrator.grade))
+  const showEraBands = route.status !== 'unresolved' && !unresolvedIdentities
+  const chainLayout = useMemo(() => layoutChain(chainNarrators, showEraBands), [chainNarrators, showEraBands])
+  const positions = chainLayout.positions
+  const nodes = new Map(chainNarrators.map((narrator, index) => [narrator.id, { narrator, position: positions[index] }]))
+  const first = positions[0]
+  const firstX = first?.x
+  const firstY = first?.y
+  const selectedEdgeRecord = edges.find(edge => edge.id === selectedEdge)
+  const missingNarrators = chainNarrators.length !== chainIds.length
+  const showDetails = route.evidence || missingNarrators || unresolvedIdentities || route.status === 'unresolved'
+
+  useEffect(() => {
+    const canvas = graphCanvasRef.current
+    if (!canvas || firstX === undefined || firstY === undefined) return
+    const frame = window.requestAnimationFrame(() => {
+      const scale = zoomRef.current / 100
+      canvas.scrollLeft = (firstX + 105) * scale - canvas.clientWidth / 2
+      canvas.scrollTop = Math.max(0, firstY * scale - 12)
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [firstX, firstY])
+
+  useEffect(() => {
+    const canvas = graphCanvasRef.current
+    if (!canvas) return
+    const pinch = { distance: 0, startZoom: 100 }
+    const pan = { x: 0, y: 0, left: 0, top: 0, active: false }
+
+    const touchDistance = (event: TouchEvent) => {
+      const [first, second] = [event.touches[0], event.touches[1]]
+      return Math.hypot(first.clientX - second.clientX, first.clientY - second.clientY)
+    }
+
+    const onTouchStart = (event: TouchEvent) => {
+      if (event.touches.length === 2) {
+        pinch.distance = touchDistance(event)
+        pinch.startZoom = zoomRef.current
+        pan.active = false
+        event.preventDefault()
+        return
+      }
+      if (event.touches.length === 1) {
+        pan.active = true
+        pan.x = event.touches[0].clientX
+        pan.y = event.touches[0].clientY
+        pan.left = canvas.scrollLeft
+        pan.top = canvas.scrollTop
+      }
+    }
+
+    const onTouchMove = (event: TouchEvent) => {
+      if (event.touches.length === 2 && pinch.distance) {
+        event.preventDefault()
+        const next = Math.round(pinch.startZoom * (touchDistance(event) / pinch.distance))
+        setZoom(Math.min(180, Math.max(70, next)))
+        return
+      }
+      if (event.touches.length === 1 && pan.active) {
+        canvas.scrollLeft = pan.left - (event.touches[0].clientX - pan.x)
+        canvas.scrollTop = pan.top - (event.touches[0].clientY - pan.y)
+      }
+    }
+
+    const onTouchEnd = () => {
+      pinch.distance = 0
+      pan.active = false
+    }
+
+    const onPointerDown = (event: PointerEvent) => {
+      if (event.pointerType !== 'mouse' || event.button !== 0 ||
+          (event.target instanceof Element && event.target.closest('button, a, [role="button"]'))) return
+      pan.active = true
+      pan.x = event.clientX
+      pan.y = event.clientY
+      pan.left = canvas.scrollLeft
+      pan.top = canvas.scrollTop
+      canvas.setPointerCapture(event.pointerId)
+    }
+    const onPointerMove = (event: PointerEvent) => {
+      if (event.pointerType !== 'mouse' || !pan.active) return
+      canvas.scrollLeft = pan.left - (event.clientX - pan.x)
+      canvas.scrollTop = pan.top - (event.clientY - pan.y)
+    }
+    const onPointerEnd = (event: PointerEvent) => {
+      if (event.pointerType === 'mouse') pan.active = false
+    }
+
+    const onWheel = (event: WheelEvent) => {
+      if (!event.ctrlKey && !event.metaKey) return
+      event.preventDefault()
+      setZoom((current) => Math.min(180, Math.max(70, current + (event.deltaY > 0 ? -8 : 8))))
+    }
+
+    canvas.addEventListener('touchstart', onTouchStart, { passive: false })
+    canvas.addEventListener('touchmove', onTouchMove, { passive: false })
+    canvas.addEventListener('touchend', onTouchEnd)
+    canvas.addEventListener('touchcancel', onTouchEnd)
+    canvas.addEventListener('pointerdown', onPointerDown)
+    canvas.addEventListener('pointermove', onPointerMove)
+    canvas.addEventListener('lostpointercapture', onPointerEnd)
+    canvas.addEventListener('wheel', onWheel, { passive: false })
+    return () => {
+      canvas.removeEventListener('touchstart', onTouchStart)
+      canvas.removeEventListener('touchmove', onTouchMove)
+      canvas.removeEventListener('touchend', onTouchEnd)
+      canvas.removeEventListener('touchcancel', onTouchEnd)
+      canvas.removeEventListener('pointerdown', onPointerDown)
+      canvas.removeEventListener('pointermove', onPointerMove)
+      canvas.removeEventListener('lostpointercapture', onPointerEnd)
+      canvas.removeEventListener('wheel', onWheel)
+    }
+  }, [])
+
+  return (
+    <section className="isnad-graph" aria-labelledby={`${graphId}-title`}>
+      <header className="isnad-graph-heading">
+        <h3 id={`${graphId}-title`}>{label}</h3>
+        <span className="isnad-count">{chainNarrators.length} narrators · {edges.length} {edges.length === 1 ? 'transmission' : 'transmissions'}</span>
+        <span className={`isnad-status isnad-status-${route.status}`}>{ROUTE_STATUS[route.status]}</span>
+      </header>
+      {showDetails && (
+        <details className="isnad-evidence">
+          <summary>Evidence details</summary>
+          {route.evidence && <p><a href={route.evidence.source_url}>Source</a> · <bdi dir="auto">{route.evidence.note}</bdi></p>}
+          {route.status === 'unresolved' && <p>Adjacent recorded edges are shown together when their endpoints and sequence agree. This does not establish route boundaries.</p>}
+          {unresolvedIdentities && <p>Unknown narrator identities are displayed without an era assignment.</p>}
+          {missingNarrators && <p>Some narrator records are missing. Edges with missing endpoints cannot be drawn.</p>}
+        </details>
+      )}
+      <div className="graph-canvas" ref={graphCanvasRef} tabIndex={0} role="region" aria-label={`${label} graph viewport`}>
+        <div
+          className="network-stage"
+          style={{ width: 900 * graphScale, height: chainLayout.height * graphScale }}
+        >
+          <svg
+            className="network-svg"
+            width={900 * graphScale}
+            height={chainLayout.height * graphScale}
+            viewBox={`0 0 900 ${chainLayout.height}`}
+            role="group"
+            aria-label={`${label}: ${route.status === 'unresolved' ? 'unverified recorded transmissions' : 'directed chain of narration'}`}
+          >
+            <defs>
+              <marker id={`${graphId}-arrow`} markerWidth="8" markerHeight="8" refX="5" refY="3" orient="auto">
+                <path d="M0,0 L0,6 L6,3 z" fill={tracePath ? '#2b6a5e' : '#8ca49e'} />
+              </marker>
+              <filter id={`${graphId}-shadow`} x="-20%" y="-20%" width="140%" height="150%">
+                <feDropShadow dx="0" dy="3" stdDeviation="4" floodColor="#243c37" floodOpacity=".08" />
+              </filter>
+            </defs>
+
+            <g className="tier-bands">
+              {chainLayout.bands.map((band) => (
+                <g key={band.tier}>
+                  <rect
+                    x="22"
+                    y={band.top}
+                    width="856"
+                    height={band.height}
+                    rx="11"
+                    className={band.tier === 'prophet' ? 'tier-prophet' : undefined}
+                  />
+                  <text x="42" y={band.top + 26}>{TIER_LABELS[band.tier]}</text>
+                </g>
+              ))}
+            </g>
+
+            <g className={`transmission-edges ${tracePath ? 'tracing' : ''}`}>
+              {[...edges].reverse().map(edge => {
+                const teacher = nodes.get(edge.teacher)
+                const student = nodes.get(edge.student)
+                if (!teacher || !student) return null
+                const from = teacher.position
+                const to = student.position
+                const startX = from.x + 105
+                const startY = from.y + NODE_HEIGHT
+                const endX = to.x + 105
+                const endY = to.y
+                const midY = (startY + endY) / 2
+                const path = `M${startX} ${startY} C${startX} ${midY}, ${endX} ${midY}, ${endX} ${endY}`
+                const labelX = (startX + endX) / 2 + 8
+                return (
+                  <g
+                    key={edge.id}
+                    data-edge-id={edge.id}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`Transmission ${edge.id}: ${teacher.narrator.name} to ${student.narrator.name}`}
+                    aria-pressed={selectedEdge === edge.id}
+                    onClick={() => setSelectedEdge(edge.id)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault()
+                        setSelectedEdge(edge.id)
+                      }
+                    }}
+                    className={selectedEdge === edge.id ? 'selected' : ''}
+                  >
+                    <path className="edge-hit" d={path} />
+                    <path d={path} markerEnd={`url(#${graphId}-arrow)`} />
+                    <text x={labelX} y={midY}>{edge.terminology}</text>
+                  </g>
+                )
+              })}
+            </g>
+
+            {chainNarrators.map((narrator, index) => {
+              const position = positions[index]
+              return (
+                <g
+                  key={narrator.id}
+                  className={`svg-node ${selectedId === narrator.id ? 'selected' : ''}`}
+                  transform={`translate(${position.x} ${position.y})`}
+                  onClick={() => onSelectNarrator(narrator.id)}
+                  role="button"
+                  aria-label={narrator.name}
+                  aria-describedby={narrator.arabic ? `${graphId}-arabic-${narrator.id}` : undefined}
+                  aria-pressed={selectedId === narrator.id}
+                  tabIndex={0}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault()
+                      onSelectNarrator(narrator.id)
+                    }
+                  }}
+                >
+                  <rect width="210" height={NODE_HEIGHT} rx="10" filter={`url(#${graphId}-shadow)`} />
+                  <title>{[narrator.name, narrator.arabic].filter(Boolean).join(' · ')}</title>
+                  <circle cx="28" cy="29" r="18" />
+                  <text className="initials" x="28" y="32" textAnchor="middle">{narrator.initials}</text>
+                  {narrator.arabic && <desc id={`${graphId}-arabic-${narrator.id}`} lang="ar">{narrator.arabic}</desc>}
+                  <foreignObject x="54" y="9" width="146" height="56" pointerEvents="none">
+                    <div className="graph-node-label">
+                      <div className="node-name" dir="auto">{narrator.name}</div>
+                      {narrator.arabic && narrator.arabic !== narrator.name && (
+                        <div className="node-arabic" lang="ar" dir="rtl">{narrator.arabic}</div>
+                      )}
+                      <div className="node-meta" dir="auto">{narrator.died} · {narrator.role}</div>
+                    </div>
+                  </foreignObject>
+                </g>
+              )
+            })}
+          </svg>
+        </div>
+
+        {selectedEdgeRecord && (
+          <div className="edge-evidence">
+            <div className="evidence-icon"><Icon name="branch" /></div>
+            <div>
+              <span>{route?.status === 'reviewed' ? 'REVIEWED TRANSMISSION' : 'RECORDED EDGE'}</span>
+              <strong>
+                {narrators.find((item) => item.id === selectedEdgeRecord.teacher)?.name}
+                {' narrated to '}
+                {narrators.find((item) => item.id === selectedEdgeRecord.student)?.name}
+              </strong>
+              <small>Hadith {hadithNumber} · Edge {selectedEdgeRecord.id} · Terminology: {selectedEdgeRecord.terminology || 'Not recorded'}</small>
+              {selectedEdgeRecord.correction && (
+                <small>
+                  Stored sender {selectedEdgeRecord.correction.original_teacher} → recipient {selectedEdgeRecord.correction.original_student}
+                  {' · '}<a href={selectedEdgeRecord.correction.source_url}>Correction source</a>
+                </small>
+              )}
+            </div>
+            <button onClick={() => setSelectedEdge(null)} aria-label="Close evidence"><Icon name="close" size={15} /></button>
+          </div>
+        )}
+
+        <div className="graph-dock">
+        <div className="zoom-controls">
+            <button onClick={() => setZoom(Math.min(180, zoom + 10))} aria-label="Zoom in"><Icon name="plus" /></button>
+          <span>{zoom}%</span>
+            <button onClick={() => setZoom(Math.max(70, zoom - 10))} aria-label="Zoom out"><Icon name="minus" /></button>
+        </div>
+          <div className="graph-hint">Drag to pan · Pinch or Ctrl + scroll to zoom</div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
 function Explorer({ onHome }: { onHome: () => void }) {
   const [books, setBooks] = useState<BookRecord[]>([])
   const [hadithsByBook, setHadithsByBook] = useState<Record<number, HadithRecord[]>>({})
   const [expandedBook, setExpandedBook] = useState<number | null>(1)
   const [currentHadith, setCurrentHadith] = useState<HadithRecord | null>(null)
   const [narrators, setNarrators] = useState<Narrator[]>([])
-  const [chains, setChains] = useState<EdgeRecord[][]>([])
+  const [chains, setChains] = useState<ReturnType<typeof groupChains>>([])
   const [chainIndex, setChainIndex] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
   const [selectedHadithId, setSelectedHadithId] = useState<number | null>(null)
   const [selectedHadithNumber, setSelectedHadithNumber] = useState<string | null>(null)
-  const [kgChains, setKgChains] = useState<KnowledgeGraphChain[]>([])
-  const [selectedKgSanadId, setSelectedKgSanadId] = useState<number | null>(null)
-  const [kgHadithId, setKgHadithId] = useState<number | null>(null)
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [query, setQuery] = useState('')
   const [searchHits, setSearchHits] = useState<Narrator[]>([])
-  const [zoom, setZoom] = useState(100)
-  const graphCanvasRef = useRef<HTMLDivElement>(null)
-  const zoomRef = useRef(100)
-  const graphCenteredRef = useRef(false)
-  zoomRef.current = zoom
+  const [hadithHits, setHadithHits] = useState<HadithRecord[]>([])
+  const [searchStatus, setSearchStatus] = useState<'loading' | 'done' | 'error'>('loading')
   const [panelOpen, setPanelOpen] = useState(() =>
     typeof window === 'undefined' ? true : window.matchMedia('(min-width: 1101px)').matches,
   )
   const [catalogOpen, setCatalogOpen] = useState(false)
-  const [highlightMadar, setHighlightMadar] = useState(false)
-  const [tracePath, setTracePath] = useState(false)
-  const [selectedEdge, setSelectedEdge] = useState<number | null>(null)
   const [editingProfile, setEditingProfile] = useState(false)
   const [profileDraft, setProfileDraft] = useState<ProfileDraft>(() => draftFromNarrator())
   const [profileSaving, setProfileSaving] = useState(false)
@@ -471,49 +958,15 @@ function Explorer({ onHome }: { onHome: () => void }) {
 
   const hadithRequest = useRef(0)
 
-  const applyChain = (payload: { narrators?: unknown; edges?: unknown }) => {
+  const applyChain = (payload: { narrators?: unknown; edges?: unknown; reviewed_routes?: RouteEvidence[]; withheld_route_reason?: string | null; recorded_identity_flags?: Record<number, string> }) => {
     const mapped = unwrapList<NarratorRecord>(payload?.narrators).map(mapNarrator)
     const chainEdges = unwrapList<EdgeRecord>(payload?.edges)
-    const grouped = groupChains(chainEdges)
+    const grouped = payload.withheld_route_reason ? [] : groupChains(chainEdges, payload.reviewed_routes)
     setNarrators(mapped)
     setChains(grouped)
     setChainIndex(0)
-    const ordered = orderChain(grouped[0] ?? [])
-    setSelectedId(ordered[Math.floor(ordered.length / 2)] ?? mapped[0]?.id ?? null)
-    setSelectedEdge(null)
-  }
-
-  const loadKnowledgeGraphHadith = async (hadithId: number) => {
-    const request = ++hadithRequest.current
-    setLoadError('')
-    try {
-      const data = await fetchJson(`/knowledge-graph/hadiths/${hadithId}/`)
-      if (request !== hadithRequest.current) return
-      const paths: KnowledgeGraphChain[] = data.visual_isnad_chains ?? []
-      const firstChain = paths.find(chain => chain.grade === 'صحيح') ?? paths[0]
-      if (!firstChain) {
-        setLoadError('No Isnad chains found for this Hadith.')
-        return
-      }
-
-      setKgChains(paths)
-      setSelectedKgSanadId(firstChain.sanad_id)
-      setKgHadithId(hadithId)
-      setHadithReaderOpen(false)
-      applyChain(firstChain)
-      setSelectedHadithId(null)
-      setSelectedHadithNumber(String(data.noInBook ?? hadithId))
-      setCurrentHadith({
-        id: hadithId,
-        hadith_number: String(data.noInBook ?? hadithId),
-        book_title: `Knowledge Graph Collection ${data.bookId}`,
-        arabic_matn: data.matnClean || data.nass || '',
-        arabic_full: data.nass || '',
-        grade: data.hukm || firstChain.grade || '',
-      })
-    } catch {
-      if (request === hadithRequest.current) setLoadError('Could not load Knowledge Graph Hadith.')
-    }
+    const ordered = graphNarratorIds(grouped[0]?.edges ?? []).filter(id => !payload.recorded_identity_flags?.[id])
+    setSelectedId(ordered[Math.floor(ordered.length / 2)] ?? null)
   }
 
   const loadBookHadiths = async (bookNumber: number) => {
@@ -531,11 +984,10 @@ function Explorer({ onHome }: { onHome: () => void }) {
 
   const selectHadith = async (hadith: Pick<HadithRecord, 'id' | 'hadith_number'>, bookNumber?: number) => {
     const request = ++hadithRequest.current
+    setLoadError('')
     setHadithReaderOpen(false)
+    setInspectedNarrator(null)
     setCatalogOpen(false)
-    setKgHadithId(null)
-    setKgChains([])
-    setSelectedKgSanadId(null)
     setSelectedHadithId(hadith.id)
     setSelectedHadithNumber(hadith.hadith_number)
     setCurrentHadith(null)
@@ -584,6 +1036,9 @@ function Explorer({ onHome }: { onHome: () => void }) {
           applyChain({
             narrators: boot.narrators || boot.hadith.narrators,
             edges: boot.edges || boot.hadith.edges,
+            reviewed_routes: boot.hadith.reviewed_routes,
+            withheld_route_reason: boot.hadith.withheld_route_reason,
+            recorded_identity_flags: boot.hadith.recorded_identity_flags,
           })
           setLoadError('')
         }
@@ -611,23 +1066,35 @@ function Explorer({ onHome }: { onHome: () => void }) {
   }, [])
 
   useEffect(() => {
-    if (!query.trim()) {
-      setSearchHits([])
-      return
-    }
+    const term = query.trim()
+    setSearchHits([])
+    setHadithHits([])
+    if (!term) return
+    setSearchStatus('loading')
+
+    const controller = new AbortController()
     const handle = window.setTimeout(async () => {
-      try {
-        const payload = await fetchJson(`/narrators/?search=${encodeURIComponent(query.trim())}&page_size=12`)
-        setSearchHits(unwrapList<NarratorRecord>(payload).map(mapNarrator))
-      } catch {
-        setSearchHits(
-          narrators.filter((item) =>
-            `${item.name} ${item.arabic} ${item.location}`.toLowerCase().includes(query.toLowerCase()),
-          ),
-        )
+      const search = encodeURIComponent(term)
+      const options = { signal: controller.signal }
+      const [narratorResult, hadithResult] = await Promise.allSettled([
+        fetchJson(`/narrators/?search=${search}&page_size=12`, options),
+        fetchJson(`/hadiths/?search=${search}&compact=1&page_size=12`, options),
+      ])
+      if (controller.signal.aborted) return
+      setSearchHits(narratorResult.status === 'fulfilled'
+        ? unwrapList<NarratorRecord>(narratorResult.value).map(mapNarrator)
+        : narrators.filter((item) =>
+            `${item.name} ${item.arabic} ${item.location}`.toLowerCase().includes(term.toLowerCase()),
+          ))
+      if (hadithResult.status === 'fulfilled') {
+        setHadithHits(unwrapList<HadithRecord>(hadithResult.value))
       }
+      setSearchStatus(hadithResult.status === 'rejected' || narratorResult.status === 'rejected' ? 'error' : 'done')
     }, 250)
-    return () => window.clearTimeout(handle)
+    return () => {
+      window.clearTimeout(handle)
+      controller.abort()
+    }
   }, [query, narrators])
 
   useEffect(() => {
@@ -651,126 +1118,16 @@ function Explorer({ onHome }: { onHome: () => void }) {
     return () => window.removeEventListener('keydown', onKey)
   }, [hadithReaderOpen, inspectedNarrator, catalogOpen])
 
-  useEffect(() => {
-    const canvas = graphCanvasRef.current
-    if (!canvas) return
-    const pinch = { distance: 0, startZoom: 100 }
-    const pan = { x: 0, y: 0, left: 0, top: 0, active: false }
-
-    const touchDistance = (event: TouchEvent) => {
-      const [first, second] = [event.touches[0], event.touches[1]]
-      return Math.hypot(first.clientX - second.clientX, first.clientY - second.clientY)
-    }
-
-    const onTouchStart = (event: TouchEvent) => {
-      if (event.touches.length === 2) {
-        pinch.distance = touchDistance(event)
-        pinch.startZoom = zoomRef.current
-        pan.active = false
-        event.preventDefault()
-        return
-      }
-      if (event.touches.length === 1) {
-        pan.active = true
-        pan.x = event.touches[0].clientX
-        pan.y = event.touches[0].clientY
-        pan.left = canvas.scrollLeft
-        pan.top = canvas.scrollTop
-      }
-    }
-
-    const onTouchMove = (event: TouchEvent) => {
-      if (event.touches.length === 2 && pinch.distance) {
-        event.preventDefault()
-        const next = Math.round(pinch.startZoom * (touchDistance(event) / pinch.distance))
-        setZoom(Math.min(180, Math.max(70, next)))
-        return
-      }
-      if (event.touches.length === 1 && pan.active) {
-        canvas.scrollLeft = pan.left - (event.touches[0].clientX - pan.x)
-        canvas.scrollTop = pan.top - (event.touches[0].clientY - pan.y)
-      }
-    }
-
-    const onTouchEnd = () => {
-      pinch.distance = 0
-      pan.active = false
-    }
-
-    const onWheel = (event: WheelEvent) => {
-      if (!event.ctrlKey && !event.metaKey) return
-      event.preventDefault()
-      setZoom((current) => Math.min(180, Math.max(70, current + (event.deltaY > 0 ? -8 : 8))))
-    }
-
-    canvas.addEventListener('touchstart', onTouchStart, { passive: false })
-    canvas.addEventListener('touchmove', onTouchMove, { passive: false })
-    canvas.addEventListener('touchend', onTouchEnd)
-    canvas.addEventListener('touchcancel', onTouchEnd)
-    canvas.addEventListener('wheel', onWheel, { passive: false })
-    return () => {
-      canvas.removeEventListener('touchstart', onTouchStart)
-      canvas.removeEventListener('touchmove', onTouchMove)
-      canvas.removeEventListener('touchend', onTouchEnd)
-      canvas.removeEventListener('touchcancel', onTouchEnd)
-      canvas.removeEventListener('wheel', onWheel)
-    }
-  }, [])
-
-  const edges = chains[chainIndex] ?? []
-  const chainIds = useMemo(() => {
-    if (kgHadithId !== null && !edges.length) return narrators.map(person => person.id)
-    return orderChain(edges)
-  }, [edges, kgHadithId, narrators])
+  const chainIds = graphNarratorIds(chains[chainIndex]?.edges ?? []).filter(id => !currentHadith?.recorded_identity_flags?.[id])
   const totalHadiths = books.reduce((sum, book) => sum + book.count, 0)
   const selectedBookNumber = Number(currentHadith?.in_book_reference?.match(/Book\s+(\d+)/i)?.[1] || expandedBook || 1)
   const activeBook = books.find((book) => book.number === selectedBookNumber)
-  const chainNarrators = useMemo(
-    () => chainIds
-      .map((id) => narrators.find((item) => item.id === id))
-      .filter((item): item is Narrator => Boolean(item)),
-    [chainIds, narrators],
-  )
-  const chainLayout = useMemo(() => layoutChain(chainNarrators), [chainNarrators])
-  const positions = chainLayout.positions
-  const graphScale = zoom / 100
-
-  useEffect(() => {
-    graphCenteredRef.current = false
-  }, [selectedHadithId, chainLayout.height])
-
-  useEffect(() => {
-    const canvas = graphCanvasRef.current
-    if (!canvas) return
-
-    const centerOnProphet = () => {
-      const prophet = chainLayout.positions[0]
-      if (!prophet) return
-      const scale = zoomRef.current / 100
-      canvas.scrollLeft = (prophet.x + 105) * scale - canvas.clientWidth / 2
-      canvas.scrollTop = Math.max(0, prophet.y * scale - 12)
-    }
-
-    const frame = window.requestAnimationFrame(centerOnProphet)
-    const observer = new IntersectionObserver((entries) => {
-      if (!entries.some((entry) => entry.isIntersecting)) return
-      if (graphCenteredRef.current) return
-      graphCenteredRef.current = true
-      centerOnProphet()
-    }, { threshold: 0.2 })
-    observer.observe(canvas)
-    return () => {
-      window.cancelAnimationFrame(frame)
-      observer.disconnect()
-    }
-  }, [chainLayout, selectedHadithId])
   const selectChain = (index: number) => {
     setChainIndex(index)
-    const ordered = orderChain(chains[index] ?? [])
+    const ordered = graphNarratorIds(chains[index]?.edges ?? []).filter(id => !currentHadith?.recorded_identity_flags?.[id])
     setSelectedId(ordered[Math.floor(ordered.length / 2)] ?? null)
-    setSelectedEdge(null)
   }
-  const selectedSummary = narrators.find((item) => item.id === selectedId) ?? chainNarrators[0]
+  const selectedSummary = narrators.find((item) => item.id === selectedId) ?? narrators.find(item => item.id === chainIds[0])
   const selectedDetail = selectedSummary && narratorDetails[selectedSummary.id]
   const selected = selectedDetail && selectedDetail !== 'error' ? selectedDetail : selectedSummary
   const inspectedDetail = inspectedNarrator && narratorDetails[inspectedNarrator.id]
@@ -795,7 +1152,6 @@ function Explorer({ onHome }: { onHome: () => void }) {
     setNarratorDetails(current => ({ ...current, [id]: undefined }))
     fetchNarratorDetails(id)
   }
-  const madarId = chainNarrators[Math.floor(chainNarrators.length / 2)]?.id
 
   const startEditingProfile = () => {
     if (!selectedDetail || selectedDetail === 'error' || !selected || selected.id >= KG_NARRATOR_OFFSET) return
@@ -832,7 +1188,8 @@ function Explorer({ onHome }: { onHome: () => void }) {
         ...raw,
         teachers: selected.record.teachers,
         students: selected.record.students,
-        transmission_students: selected.record.transmission_students,
+        catalog_source_url: selected.record.catalog_source_url,
+        knowledge_graph_profile: selected.record.knowledge_graph_profile,
       })
       setNarratorDetails(current => ({ ...current, [id]: mapped }))
       setNarrators((current) => {
@@ -863,10 +1220,6 @@ function Explorer({ onHome }: { onHome: () => void }) {
     openNarratorPage(mapNarrator(reference))
   }
 
-  const edgeByPair = (teacherId: number, studentId: number) =>
-    edges.find((edge) => edge.teacher === teacherId && edge.student === studentId)
-
-  const selectedEdgeRecord = edges.find((edge) => edge.id === selectedEdge)
   const englishTitle = currentHadith
     ? (currentHadith.chapter_title || currentHadith.topic || `Hadith ${currentHadith.hadith_number}`).replace(/^Chapter:\s*/i, '')
     : isLoading
@@ -876,10 +1229,9 @@ function Explorer({ onHome }: { onHome: () => void }) {
   const englishMatn = currentHadith?.english_matn || ''
   const arabicText = (currentHadith?.arabic_matn || '').replace(/^["«\s]+/, '').trim()
   const arabicIsnad = (currentHadith?.arabic_isnad || '').trim()
-  const arabicFull = (
-    currentHadith?.arabic_full
-    || [arabicIsnad, arabicText].filter(Boolean).join('\n\n')
-  ).trim()
+  const arabicFull = currentHadith?.arabic_full
+    || [arabicIsnad, currentHadith?.arabic_matn].filter(Boolean).join('\n\n')
+  const englishUnavailable = 'No English translation is available for this hadith.'
   const englishPreview = previewText(englishMatn, 28)
   const arabicPreview = previewText(arabicText, 18)
   const hadithIsLong = englishPreview.truncated || arabicPreview.truncated
@@ -891,7 +1243,6 @@ function Explorer({ onHome }: { onHome: () => void }) {
     return `Hadith ${hadith.hadith_number}`
   }
 
-  const nodeLocation = (value: string) => (value.length > 18 ? `${value.slice(0, 17)}…` : value)
 
   return (
     <div className="app-shell">
@@ -913,23 +1264,46 @@ function Explorer({ onHome }: { onHome: () => void }) {
           </span>
         </a>
 
-        <div className="search-wrap">
+        <div className="search-wrap" onKeyDown={(event) => {
+          if (event.key === 'Escape' && query) {
+            event.stopPropagation()
+            setQuery('')
+            event.currentTarget.querySelector('input')?.focus()
+          }
+        }}>
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search narrators…"
-            aria-label="Search narrators"
+            dir="auto"
+            placeholder="Search hadiths and narrators…"
+            aria-label="Search hadiths and narrators"
           />
           <Icon name="search" size={18} />
-          {query && (
+          {query.trim() && (
             <div className="search-results">
-              {searchHits.length ? searchHits.map((item) => (
-                <button key={item.id} onClick={() => openNarratorPage(item)}>
-                  <span className="result-avatar">{item.initials}</span>
-                  <span><strong>{item.name}</strong><small>{item.location} · {item.era}</small></span>
+              {hadithHits.map((hadith) => (
+                <button key={hadith.id} onClick={() => {
+                  setQuery('')
+                  void selectHadith(hadith)
+                }}>
+                  <span className="result-avatar" aria-hidden="true">#</span>
+                  <span><strong>Hadith {hadith.hadith_number}</strong><small>{hadith.chapter_title || listPreview(hadith)}</small></span>
                   <Icon name="arrow" size={15} />
                 </button>
-              )) : <p>No narrators found</p>}
+              ))}
+              {searchHits.map((item) => (
+                <button key={item.id} onClick={() => {
+                  setQuery('')
+                  openNarratorPage(item)
+                }}>
+                  <span className="result-avatar">{item.initials}</span>
+                  <span><strong dir="auto">{item.name}</strong><small>{item.location} · {item.era}</small></span>
+                  <Icon name="arrow" size={15} />
+                </button>
+              ))}
+              {searchStatus === 'loading' && <p role="status">Searching…</p>}
+              {searchStatus === 'error' && <p role="status">Some search results are unavailable.</p>}
+              {searchStatus === 'done' && !hadithHits.length && !searchHits.length && <p role="status">No hadiths or narrators found</p>}
             </div>
           )}
         </div>
@@ -1106,7 +1480,7 @@ function Explorer({ onHome }: { onHome: () => void }) {
         <main className="main-content">
           <section className="hadith-header">
             <div className="breadcrumb">
-              <span>{kgHadithId === null ? 'Sahih al-Bukhari' : 'Knowledge Graph'}</span><b>/</b><span>{kgHadithId !== null ? currentHadith?.book_title : activeBook?.title || currentHadith?.chapter_title?.replace(/^Chapter:\s*/i, '') || 'Collection'}</span><b>/</b><strong>Hadith {currentHadith?.hadith_number || '—'}</strong>
+              <span>Sahih al-Bukhari</span><b>/</b><span>{activeBook?.title || currentHadith?.chapter_title?.replace(/^Chapter:\s*/i, '') || 'Collection'}</span><b>/</b><strong>Hadith {currentHadith?.hadith_number || '—'}</strong>
             </div>
             <div className="hadith-title-row">
               <div className="hadith-title-copy">
@@ -1122,9 +1496,11 @@ function Explorer({ onHome }: { onHome: () => void }) {
               <div className="quote-rule"><span>{currentHadith?.hadith_number || '1'}</span></div>
               <div className="translation">
                 <p>
-                  {isLoading
-                    ? 'Loading hadiths...'
-                    : (hadithIsLong ? englishPreview.preview : englishMatn) || 'English translation is not available for this record.'}
+                  {loadError
+                    ? loadError
+                    : !currentHadith
+                      ? 'Loading hadith…'
+                    : (hadithIsLong ? englishPreview.preview : englishMatn) || englishUnavailable}
                 </p>
                 <button type="button" onClick={() => setHadithReaderOpen(true)} disabled={!currentHadith || isLoading}>
                   Read full hadith <Icon name="arrow" size={15} />
@@ -1149,178 +1525,18 @@ function Explorer({ onHome }: { onHome: () => void }) {
             </div>
           </section>
 
-          <section className="visualizer">
-            <div className="visualizer-toolbar">
-              <div>
-                <p className="eyebrow">TRANSMISSION PATH</p>
-                <h2>Chain of narration <span>{chainNarrators.length} nodes · {edges.length} transmissions</span></h2>
-                {chains.length > 1 && (
-                  <label>
-                    Isnād{' '}
-                    <select value={chainIndex} onChange={(event) => selectChain(Number(event.target.value))}>
-                      {chains.map((chain, index) => (
-                        <option key={chain[0].id} value={index}>Chain {index + 1} of {chains.length}</option>
-                      ))}
-                    </select>
-                  </label>
-                )}
-                {!isLoading && currentHadith && !chainNarrators.length && <p>No chain was extracted for this hadith.</p>}
-              </div>
-              <button
-                className="knowledge-graph-load"
-                type="button"
-                disabled={isLoading}
-                onClick={() => void loadKnowledgeGraphHadith(17154)}
-              >
-                Load Knowledge Graph Hadith 17154
-              </button>
-              {kgHadithId !== null && (
-                <label>
-                  Knowledge Graph isnād{' '}
-                  <select value={selectedKgSanadId ?? ''} onChange={(event) => {
-                    const path = kgChains.find(chain => chain.sanad_id === Number(event.target.value))
-                    if (!path) return
-                    setSelectedKgSanadId(path.sanad_id)
-                    applyChain(path)
-                  }}>
-                    {kgChains.map(path => (
-                      <option key={path.sanad_id} value={path.sanad_id}>
-                        Chain {path.sanad_id} · {path.grade || 'Unrated'} · {path.narrators.length} narrators
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              )}
-            </div>
-
-            <div className="graph-legend-row">
-              <div className="graph-legend">
-                <span><i className="legend-path" /> Selected isnad</span>
-                <span><i className="legend-madar" /> Common link (Madar)</span>
-                <span><i className="legend-direction" /> Direction of transmission</span>
-              </div>
-              <div className="graph-actions">
-                <button className={tracePath ? 'active' : ''} onClick={() => setTracePath(!tracePath)}><Icon name="branch" size={14} /> Trace path</button>
-                <button className={highlightMadar ? 'active gold' : ''} onClick={() => setHighlightMadar(!highlightMadar)}><span className="radar-dot" /> Highlight Madar</button>
-              </div>
-              </div>
-
-            <div className="graph-canvas" ref={graphCanvasRef}>
-              <div
-                className="network-stage"
-                style={{ width: 900 * graphScale, height: chainLayout.height * graphScale }}
-              >
-                <svg
-                  className="network-svg"
-                  width={900 * graphScale}
-                  height={chainLayout.height * graphScale}
-                  viewBox={`0 0 900 ${chainLayout.height}`}
-                  role="img"
-                  aria-label="Directed chain of narration"
-                >
-                  <defs>
-                    <marker id="arrowhead" markerWidth="8" markerHeight="8" refX="5" refY="3" orient="auto">
-                      <path d="M0,0 L0,6 L6,3 z" fill={tracePath ? '#2b6a5e' : '#8ca49e'} />
-                    </marker>
-                    <filter id="node-shadow" x="-20%" y="-20%" width="140%" height="150%">
-                      <feDropShadow dx="0" dy="3" stdDeviation="4" floodColor="#243c37" floodOpacity=".08" />
-                    </filter>
-                  </defs>
-
-                  <g className="tier-bands">
-                    {chainLayout.bands.map((band) => (
-                      <g key={band.tier}>
-                        <rect
-                          x="22"
-                          y={band.top}
-                          width="856"
-                          height={band.height}
-                          rx="11"
-                          className={band.tier === 'prophet' ? 'tier-prophet' : undefined}
-                        />
-                        <text x="42" y={band.top + 26}>{TIER_LABELS[band.tier]}</text>
-                      </g>
-                    ))}
-                  </g>
-
-                  <g className={`transmission-edges ${tracePath ? 'tracing' : ''}`}>
-                    {chainNarrators.slice(0, -1).map((teacher, index) => {
-                      const student = chainNarrators[index + 1]
-                      const from = positions[index]
-                      const to = positions[index + 1]
-                      const edge = edgeByPair(teacher.id, student.id)
-                      if (!edge) return null
-                      const startX = from.x + 105
-                      const startY = from.y + 58
-                      const endX = to.x + 105
-                      const endY = to.y
-                      const path = `M${startX} ${startY} C${startX} ${(startY + endY) / 2}, ${endX} ${(startY + endY) / 2}, ${endX} ${endY}`
-                      return (
-                        <g
-                          key={edge?.id ?? `${teacher.id}-${student.id}`}
-                          onClick={() => setSelectedEdge(edge?.id ?? null)}
-                          className={selectedEdge === edge?.id ? 'selected' : ''}
-                        >
-                          <path className="edge-hit" d={path} />
-                          <path d={path} markerEnd="url(#arrowhead)" />
-                          <text x={(startX + endX) / 2 + 8} y={(startY + endY) / 2}>{edge?.terminology || 'عن'}</text>
-                        </g>
-                      )
-                    })}
-                  </g>
-
-                  {chainNarrators.map((narrator, index) => {
-                    const position = positions[index]
-                    const isMadar = narrator.id === madarId
-                    return (
-                      <g
-                        key={narrator.id}
-                        className={`svg-node ${selectedId === narrator.id ? 'selected' : ''} ${isMadar && highlightMadar ? 'madar' : ''}`}
-                        transform={`translate(${position.x} ${position.y})`}
-                        onClick={() => selectNarrator(narrator.id)}
-                        role="button"
-                        tabIndex={0}
-                      >
-                        <rect width="210" height="58" rx="10" filter="url(#node-shadow)" />
-                        <circle cx="28" cy="29" r="18" />
-                        <text className="initials" x="28" y="32" textAnchor="middle">{narrator.initials}</text>
-                        <text className="node-name" x="56" y="22">{narrator.name.length > 22 ? `${narrator.name.slice(0, 21)}…` : narrator.name}</text>
-                        <text className="node-meta" x="56" y="38">{narrator.died.split(',')[0]} · {nodeLocation(narrator.location)}</text>
-                        <rect className="role-pill" x="148" y="10" width="52" height="15" rx="4" />
-                        <text className="role-text" x="174" y="20" textAnchor="middle">{narrator.role}</text>
-                        {isMadar && highlightMadar && <><circle className="pulse" cx="205" cy="5" r="7" /><text className="madar-mark" x="205" y="8" textAnchor="middle">M</text></>}
-                      </g>
-                    )
-                  })}
-                </svg>
-              </div>
-
-              {selectedEdgeRecord && (
-                <div className="edge-evidence">
-                  <div className="evidence-icon"><Icon name="branch" /></div>
-                  <div>
-                    <span>TRANSMISSION EVIDENCE</span>
-                    <strong>
-                      {narrators.find((item) => item.id === selectedEdgeRecord.teacher)?.name}
-                      {' narrated to '}
-                      {narrators.find((item) => item.id === selectedEdgeRecord.student)?.name}
-                    </strong>
-                    <small>Hadith {currentHadith?.hadith_number} · Terminology: {selectedEdgeRecord.terminology}</small>
-                  </div>
-                  <button onClick={() => setSelectedEdge(null)} aria-label="Close evidence"><Icon name="close" size={15} /></button>
-                </div>
-              )}
-
-              <div className="graph-dock">
-              <div className="zoom-controls">
-                  <button onClick={() => setZoom(Math.min(180, zoom + 10))} aria-label="Zoom in"><Icon name="plus" /></button>
-                <span>{zoom}%</span>
-                  <button onClick={() => setZoom(Math.max(70, zoom - 10))} aria-label="Zoom out"><Icon name="minus" /></button>
-              </div>
-                <div className="graph-hint">Pinch or scroll to zoom · Drag to pan</div>
-              </div>
-            </div>
-          </section>
+          <IsnadViewer
+            chains={chains}
+            chainIndex={chainIndex}
+            onSelectChain={selectChain}
+            narrators={narrators}
+            hadithNumber={currentHadith?.hadith_number}
+            waiting={isLoading || (!currentHadith && selectedHadithId !== null && !loadError)}
+            emptyReason={currentHadith?.withheld_route_reason ?? (loadError || undefined)}
+            selectedId={selectedId}
+            onSelectNarrator={selectNarrator}
+            identityFlags={currentHadith?.recorded_identity_flags}
+          />
         </main>
 
         {selected && <aside className={`detail-panel ${panelOpen ? 'open' : ''}`}>
@@ -1398,16 +1614,17 @@ function Explorer({ onHome }: { onHome: () => void }) {
             <span className="profile-avatar">{selected.initials}</span>
             {selected.arabic && <p className="profile-arabic" lang="ar" dir="rtl">{selected.arabic}</p>}
             <h2 dir="auto">{selected.name}</h2>
-            <div className="profile-tags"><span>{selected.role}</span><span>{selected.grade}</span></div>
+            <div className="profile-tags"><span>{selected.role}</span><span dir="auto">{selected.grade}</span></div>
           </div>
 
           <NarratorProfile
             record={selected.record}
+            source={selected.id >= KG_NARRATOR_OFFSET ? 'knowledge_graph' : 'local'}
             status={selectedDetail === 'error' ? 'error' : selectedDetail ? 'loaded' : 'loading'}
             onOpen={openRelatedNarrator}
             onRetry={() => retryNarratorDetails(selected.id)}
           />
-          {editor.can_edit_biographies && selected.id < KG_NARRATOR_OFFSET && selectedDetail && selectedDetail !== 'error' && (
+          {editor.can_edit_biographies && !selected.record.profile_source && selected.id < KG_NARRATOR_OFFSET && selectedDetail && selectedDetail !== 'error' && (
             <div className="profile-section">
               <button type="button" onClick={startEditingProfile}>
                 Edit profile <Icon name="arrow" size={15} />
@@ -1417,23 +1634,13 @@ function Explorer({ onHome }: { onHome: () => void }) {
             </>
           )}
 
-          <div className="profile-section relationship-grid">
-            <button>
-              <small>Direct teachers</small>
-              <strong>{edges.filter((edge) => edge.student === selected.id).length || '—'}</strong>
-              <span>In this chain</span>
-            </button>
-            <button>
-              <small>Direct students</small>
-              <strong>{edges.filter((edge) => edge.teacher === selected.id).length || '—'}</strong>
-              <span>In this chain</span>
-            </button>
+          {chains[chainIndex]?.status !== 'unresolved' && chainIds.includes(selected.id) && <div className="profile-section relationship-grid">
             <button>
               <small>Chain position</small>
-              <strong>{Math.max(1, chainIds.indexOf(selected.id) + 1)} / {chainIds.length || 1}</strong>
+              <strong>{chainIds.indexOf(selected.id) + 1} / {chainIds.length}</strong>
               <span>This narration</span>
             </button>
-          </div>
+          </div>}
         </aside>}
 
         {(catalogOpen || (panelOpen && Boolean(selected))) && (
@@ -1472,7 +1679,7 @@ function Explorer({ onHome }: { onHome: () => void }) {
                 <h2 id="narrator-reader-title" dir="auto">{inspected.name}</h2>
                 <div className="profile-tags">
                   <span>{inspected.role}</span>
-                  <span>{inspected.grade}</span>
+                  <span dir="auto">{inspected.grade}</span>
                 </div>
               </div>
               <button type="button" onClick={() => setInspectedNarrator(null)} aria-label="Close">
@@ -1482,6 +1689,7 @@ function Explorer({ onHome }: { onHome: () => void }) {
             <NarratorProfile
               key={inspected.id}
               record={inspected.record}
+              source={inspected.id >= KG_NARRATOR_OFFSET ? 'knowledge_graph' : 'local'}
               status={inspectedDetail === 'error' ? 'error' : inspectedDetail ? 'loaded' : 'loading'}
               onOpen={openRelatedNarrator}
               onRetry={() => retryNarratorDetails(inspected.id)}
@@ -1524,7 +1732,7 @@ function Explorer({ onHome }: { onHome: () => void }) {
               ) : null}
               <section>
                 <h3>English</h3>
-                <p>{englishMatn || 'English translation is not available for this record.'}</p>
+                <p>{englishMatn || englishUnavailable}</p>
               </section>
             </div>
           </article>
