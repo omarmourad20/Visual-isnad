@@ -108,3 +108,93 @@ def correct_reviewed_legacy_route(hadith, edges):
                 },
             })
     return display
+
+
+@lru_cache(maxsize=1)
+def route_evidence():
+    with (DATA_DIR / "isnad_route_evidence.json").open(encoding="utf-8") as stream:
+        return json.load(stream)
+
+
+def matching_route_evidence(hadith):
+    review = route_evidence().get(hadith.reference_url)
+    if review and "isnad" in review and normalize_arabic(hadith.arabic_isnad) == normalize_arabic(review["isnad"]):
+        return review
+    return None
+
+
+def legacy_signature_matches(edges, review):
+    return all(e["chain_index"] is None for e in edges) and [
+        [e["sequence"], e["student"], e["teacher"]] for e in edges
+    ] == review["legacy_edges"]
+
+
+def apply_path_identity_review(hadith, edges):
+    review = matching_route_evidence(hadith)
+    if not review or not review.get("replacements") or not legacy_signature_matches(edges, review):
+        return edges
+    replacements = {int(key): value for key, value in review["replacements"].items()}
+    result = []
+    for edge in edges:
+        student = replacements.get(edge["student"], edge["student"])
+        teacher = replacements.get(edge["teacher"], edge["teacher"])
+        if (student, teacher) != (edge["student"], edge["teacher"]):
+            edge = {
+                **edge, "student": student, "teacher": teacher,
+                "correction": {
+                    "source_url": hadith.reference_url, "evidence": review["notes"][0],
+                    "original_student": edge["student"], "original_teacher": edge["teacher"],
+                },
+            }
+        result.append(edge)
+    return result
+
+
+def describe_reviewed_routes(hadith, raw_edges, display_edges):
+    """The API annotates route membership separately from immutable edge IDs."""
+    review = matching_route_evidence(hadith)
+    if not review:
+        earlier = reviewed_narrator_routes().get(hadith.reference_url)
+        prefix = route_evidence().get(hadith.reference_url, {}).get("reviewed_identity_prefix")
+        if earlier and prefix and display_edges is not raw_edges:
+            return [{"edge_ids": [edge["id"] for edge in display_edges[:prefix]], "status": "legacy_segment",
+                     "source_url": hadith.reference_url,
+                     "note": earlier["evidence"] + ". Tail attribution and route completeness remain outside that review."}]
+        return []
+    if review.get("withheld_reason"):
+        return []
+    spans = []
+    if legacy_signature_matches(raw_edges, review):
+        requires_identity_review = review.get("replacements") or (
+            hadith.reference_url == SOURCE_URL or hadith.reference_url in reviewed_narrator_routes()
+        )
+        if requires_identity_review and display_edges is raw_edges:
+            return []
+        offset = 0
+        for index, length in enumerate(review["lengths"]):
+            spans.append((display_edges[offset:offset + length], "legacy_segment" if index else "reviewed"))
+            offset += length
+    elif review.get("indexed_paths"):
+        grouped = {}
+        for edge in raw_edges:
+            index = edge["chain_index"]
+            if index is None:
+                return []
+            grouped.setdefault(index, []).append(edge)
+        groups = [grouped[index] for index in sorted(grouped)]
+        actual = [[(e["student"], e["teacher"]) for e in group] for group in groups]
+        if actual != [list(zip(path, path[1:])) for path in review["indexed_paths"]]:
+            return []
+        spans = [(group, "reviewed") for group in groups]
+    return [
+        {"edge_ids": [edge["id"] for edge in group], "status": status,
+         "source_url": hadith.reference_url, "note": review["notes"][index]}
+        for index, (group, status) in enumerate(spans)
+    ]
+
+
+def withheld_route_reason(hadith, raw_edges):
+    review = matching_route_evidence(hadith)
+    if review and review.get("withheld_reason") and legacy_signature_matches(raw_edges, review):
+        return review["withheld_reason"]
+    return None

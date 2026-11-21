@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Landing from './Landing'
-import { groupChains, orderChain, type EdgeRecord } from './transmissionPaths'
+import { groupChains, orderChain, type EdgeRecord, type RouteEvidence } from './transmissionPaths'
 import NarratorProfile, { narratorDate, recordedText, type NarratorRecord, type NarratorReference } from './NarratorProfile'
 
 type IconName =
@@ -101,7 +101,7 @@ type HadithRecord = {
   chapter_title?: string
   chapter_title_arabic?: string
   arabic_matn?: string
-  chain_boundaries_recorded?: boolean
+  withheld_route_reason?: string | null
   arabic_isnad?: string
   arabic_full?: string
   english_matn?: string
@@ -333,7 +333,7 @@ const TIER_LABELS: Record<Generation, string> = {
   scholar: 'HADITH SCHOLARS',
 }
 
-const NODE_HEIGHT = 58
+const NODE_HEIGHT = 72
 const NODE_GAP = 42
 const BAND_PAD = 16
 const BAND_GAP = 8
@@ -422,7 +422,7 @@ function Explorer({ onHome }: { onHome: () => void }) {
   const [expandedBook, setExpandedBook] = useState<number | null>(1)
   const [currentHadith, setCurrentHadith] = useState<HadithRecord | null>(null)
   const [narrators, setNarrators] = useState<Narrator[]>([])
-  const [chains, setChains] = useState<EdgeRecord[][]>([])
+  const [chains, setChains] = useState<ReturnType<typeof groupChains>>([])
   const [chainIndex, setChainIndex] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
@@ -470,7 +470,7 @@ function Explorer({ onHome }: { onHome: () => void }) {
     const fromKnowledgeGraph = id >= KG_NARRATOR_OFFSET
     const path = fromKnowledgeGraph
       ? `/knowledge-graph/rawis/${id - KG_NARRATOR_OFFSET}/`
-      : `/narrators/${id}/`
+      : `/narrators/${id}/?evidence=1`
     void fetchJson(path)
       .then(raw => {
         const detail = fromKnowledgeGraph ? mapKnowledgeGraphNarrator(id, raw) : mapNarrator(raw)
@@ -484,15 +484,16 @@ function Explorer({ onHome }: { onHome: () => void }) {
 
   const hadithRequest = useRef(0)
 
-  const applyChain = (payload: { narrators?: unknown; edges?: unknown }) => {
+  const applyChain = (payload: { narrators?: unknown; edges?: unknown; reviewed_routes?: RouteEvidence[]; withheld_route_reason?: string | null }, focusEdgeId?: number) => {
     const mapped = unwrapList<NarratorRecord>(payload?.narrators).map(mapNarrator)
     const chainEdges = unwrapList<EdgeRecord>(payload?.edges)
-    const grouped = groupChains(chainEdges)
+    const grouped = payload.withheld_route_reason ? [] : groupChains(chainEdges, payload.reviewed_routes)
     setNarrators(mapped)
     setChains(grouped)
-    setChainIndex(0)
-    const ordered = orderChain(grouped[0] ?? [])
-    setSelectedId(ordered[Math.floor(ordered.length / 2)] ?? mapped[0]?.id ?? null)
+    const index = Math.max(0, grouped.findIndex(route => route.edges.some(edge => edge.id === focusEdgeId)))
+    setChainIndex(index)
+    const ordered = orderChain(grouped[index]?.edges ?? [])
+    setSelectedId(ordered[Math.floor(ordered.length / 2)] ?? null)
     setSelectedEdge(null)
   }
 
@@ -528,7 +529,7 @@ function Explorer({ onHome }: { onHome: () => void }) {
     return hadiths
   }
 
-  const selectHadith = async (hadith: Pick<HadithRecord, 'id' | 'hadith_number'>, bookNumber?: number) => {
+  const selectHadith = async (hadith: Pick<HadithRecord, 'id' | 'hadith_number'> & { edge_id?: number }, bookNumber?: number) => {
     const request = ++hadithRequest.current
     setLoadError('')
     setHadithReaderOpen(false)
@@ -546,7 +547,7 @@ function Explorer({ onHome }: { onHome: () => void }) {
       const detail = await fetchJson(`/hadiths/${encodeURIComponent(hadith.hadith_number)}/?chain=1`)
       if (request !== hadithRequest.current) return
       setCurrentHadith(detail)
-      applyChain(detail)
+      applyChain(detail, hadith.edge_id)
       setLoadError('')
     } catch (error) {
       if (request !== hadithRequest.current) return
@@ -585,6 +586,8 @@ function Explorer({ onHome }: { onHome: () => void }) {
           applyChain({
             narrators: boot.narrators || boot.hadith.narrators,
             edges: boot.edges || boot.hadith.edges,
+            reviewed_routes: boot.hadith.reviewed_routes,
+            withheld_route_reason: boot.hadith.withheld_route_reason,
           })
           setLoadError('')
         }
@@ -718,7 +721,8 @@ function Explorer({ onHome }: { onHome: () => void }) {
     }
   }, [])
 
-  const edges = chains[chainIndex] ?? []
+  const route = chains[chainIndex]
+  const edges = route?.edges ?? []
   const chainIds = useMemo(() => orderChain(edges), [edges])
   const totalHadiths = books.reduce((sum, book) => sum + book.count, 0)
   const selectedBookNumber = Number(currentHadith?.in_book_reference?.match(/Book\s+(\d+)/i)?.[1] || expandedBook || 1)
@@ -764,7 +768,7 @@ function Explorer({ onHome }: { onHome: () => void }) {
   }, [chainLayout, selectedHadithId])
   const selectChain = (index: number) => {
     setChainIndex(index)
-    const ordered = orderChain(chains[index] ?? [])
+    const ordered = orderChain(chains[index]?.edges ?? [])
     setSelectedId(ordered[Math.floor(ordered.length / 2)] ?? null)
     setSelectedEdge(null)
   }
@@ -831,6 +835,9 @@ function Explorer({ onHome }: { onHome: () => void }) {
         teachers: selected.record.teachers,
         students: selected.record.students,
         transmission_students: selected.record.transmission_students,
+        reviewed_bukhari_hadiths: selected.record.reviewed_bukhari_hadiths,
+        catalog_source_url: selected.record.catalog_source_url,
+        knowledge_graph_profile: selected.record.knowledge_graph_profile,
       })
       setNarratorDetails(current => ({ ...current, [id]: mapped }))
       setNarrators((current) => {
@@ -888,7 +895,6 @@ function Explorer({ onHome }: { onHome: () => void }) {
     return `Hadith ${hadith.hadith_number}`
   }
 
-  const nodeLocation = (value: string) => (value.length > 18 ? `${value.slice(0, 17)}…` : value)
 
   return (
     <div className="app-shell">
@@ -1153,20 +1159,32 @@ function Explorer({ onHome }: { onHome: () => void }) {
               <div>
                 <p className="eyebrow">VISUAL ISNAD TRANSMISSION PATH</p>
                 <h2>Chain of narration <span>{chainNarrators.length} nodes · {edges.length} transmissions</span></h2>
-                {currentHadith?.chain_boundaries_recorded === false && (
-                  <p>Some route boundaries are unverified. The graph shows contiguous recorded edges.</p>
+                {route && (
+                  <p className="route-status" role="status">
+                    {route.status === 'unresolved' && 'Unresolved route · Showing an isolated recorded edge.'}
+                    {route.status === 'recorded' && 'Recorded route · Source verification pending.'}
+                    {route.status === 'legacy_segment' && 'Legacy segment · Source-reviewed but incomplete in the database.'}
+                    {route.status === 'reviewed' && 'Source-reviewed route.'}
+                    {route.evidence && <> <a href={route.evidence.source_url}>Source</a> · {route.evidence.note}</>}
+                    {chainIds.some(id => id >= 800000) && ' Some narrator identities are unresolved.'}
+                    {chainNarrators.length !== chainIds.length && ' Some narrator records are missing.'}
+                  </p>
                 )}
                 {chains.length > 1 && (
                   <label>
                     Isnād{' '}
                     <select value={chainIndex} onChange={(event) => selectChain(Number(event.target.value))}>
                       {chains.map((chain, index) => (
-                        <option key={chain[0].id} value={index}>{currentHadith?.chain_boundaries_recorded === false ? 'Segment' : 'Chain'} {index + 1} of {chains.length}</option>
+                        <option key={chain.edges[0].id} value={index}>
+                          {chain.status === 'unresolved' ? 'Edge' : chain.status === 'legacy_segment' ? 'Segment' : 'Route'} {index + 1} of {chains.length}
+                        </option>
                       ))}
                     </select>
                   </label>
                 )}
-                {!isLoading && currentHadith && !chainNarrators.length && <p>No chain was extracted for this hadith.</p>}
+                {!isLoading && currentHadith && !chainNarrators.length && (
+                  <p role="status">{currentHadith.withheld_route_reason || 'No chain was extracted for this hadith.'}</p>
+                )}
               </div>
             </div>
 
@@ -1220,7 +1238,7 @@ function Explorer({ onHome }: { onHome: () => void }) {
                   width={900 * graphScale}
                   height={chainLayout.height * graphScale}
                   viewBox={`0 0 900 ${chainLayout.height}`}
-                  role="img"
+                  role="group"
                   aria-label="Directed chain of narration"
                 >
                   <defs>
@@ -1256,19 +1274,19 @@ function Explorer({ onHome }: { onHome: () => void }) {
                       const edge = edgeByPair(teacher.id, student.id)
                       if (!edge) return null
                       const startX = from.x + 105
-                      const startY = from.y + 58
+                      const startY = from.y + NODE_HEIGHT
                       const endX = to.x + 105
                       const endY = to.y
                       const path = `M${startX} ${startY} C${startX} ${(startY + endY) / 2}, ${endX} ${(startY + endY) / 2}, ${endX} ${endY}`
                       return (
                         <g
-                          key={edge?.id ?? `${teacher.id}-${student.id}`}
-                          onClick={() => setSelectedEdge(edge?.id ?? null)}
-                          className={selectedEdge === edge?.id ? 'selected' : ''}
+                          key={edge.id}
+                          onClick={() => setSelectedEdge(edge.id)}
+                          className={selectedEdge === edge.id ? 'selected' : ''}
                         >
                           <path className="edge-hit" d={path} />
                           <path d={path} markerEnd="url(#arrowhead)" />
-                          <text x={(startX + endX) / 2 + 8} y={(startY + endY) / 2}>{edge?.terminology || 'عن'}</text>
+                          <text x={(startX + endX) / 2 + 8} y={(startY + endY) / 2}>{edge.terminology}</text>
                         </g>
                       )
                     })}
@@ -1284,15 +1302,31 @@ function Explorer({ onHome }: { onHome: () => void }) {
                         transform={`translate(${position.x} ${position.y})`}
                         onClick={() => selectNarrator(narrator.id)}
                         role="button"
+                        aria-label={narrator.name}
+                        aria-describedby={narrator.arabic ? `graph-arabic-${narrator.id}` : undefined}
+                        aria-pressed={selectedId === narrator.id}
                         tabIndex={0}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault()
+                            selectNarrator(narrator.id)
+                          }
+                        }}
                       >
-                        <rect width="210" height="58" rx="10" filter="url(#node-shadow)" />
+                        <rect width="210" height={NODE_HEIGHT} rx="10" filter="url(#node-shadow)" />
+                        <title>{[narrator.name, narrator.arabic].filter(Boolean).join(' · ')}</title>
                         <circle cx="28" cy="29" r="18" />
                         <text className="initials" x="28" y="32" textAnchor="middle">{narrator.initials}</text>
-                        <text className="node-name" x="56" y="22">{narrator.name.length > 22 ? `${narrator.name.slice(0, 21)}…` : narrator.name}</text>
-                        <text className="node-meta" x="56" y="38">{narrator.died.split(',')[0]} · {nodeLocation(narrator.location)}</text>
-                        <rect className="role-pill" x="148" y="10" width="52" height="15" rx="4" />
-                        <text className="role-text" x="174" y="20" textAnchor="middle">{narrator.role}</text>
+                        {narrator.arabic && <desc id={`graph-arabic-${narrator.id}`} lang="ar">{narrator.arabic}</desc>}
+                        <foreignObject x="54" y="9" width="146" height="56" pointerEvents="none">
+                          <div className="graph-node-label">
+                            <div className="node-name" dir="auto">{narrator.name}</div>
+                            {narrator.arabic && narrator.arabic !== narrator.name && (
+                              <div className="node-arabic" lang="ar" dir="rtl">{narrator.arabic}</div>
+                            )}
+                            <div className="node-meta" dir="auto">{narrator.died} · {narrator.role}</div>
+                          </div>
+                        </foreignObject>
                         {isMadar && highlightMadar && <><circle className="pulse" cx="205" cy="5" r="7" /><text className="madar-mark" x="205" y="8" textAnchor="middle">M</text></>}
                       </g>
                     )
@@ -1304,13 +1338,19 @@ function Explorer({ onHome }: { onHome: () => void }) {
                 <div className="edge-evidence">
                   <div className="evidence-icon"><Icon name="branch" /></div>
                   <div>
-                    <span>TRANSMISSION EVIDENCE</span>
+                    <span>{route?.status === 'reviewed' ? 'REVIEWED TRANSMISSION' : 'RECORDED EDGE'}</span>
                     <strong>
                       {narrators.find((item) => item.id === selectedEdgeRecord.teacher)?.name}
                       {' narrated to '}
                       {narrators.find((item) => item.id === selectedEdgeRecord.student)?.name}
                     </strong>
-                    <small>Hadith {currentHadith?.hadith_number} · Terminology: {selectedEdgeRecord.terminology}</small>
+                    <small>Hadith {currentHadith?.hadith_number} · Edge {selectedEdgeRecord.id} · Terminology: {selectedEdgeRecord.terminology || 'Not recorded'}</small>
+                    {selectedEdgeRecord.correction && (
+                      <small>
+                        Stored sender {selectedEdgeRecord.correction.original_teacher} → recipient {selectedEdgeRecord.correction.original_student}
+                        {' · '}<a href={selectedEdgeRecord.correction.source_url}>Correction source</a>
+                      </small>
+                    )}
                   </div>
                   <button onClick={() => setSelectedEdge(null)} aria-label="Close evidence"><Icon name="close" size={15} /></button>
                 </div>
@@ -1411,6 +1451,7 @@ function Explorer({ onHome }: { onHome: () => void }) {
             source={selected.id >= KG_NARRATOR_OFFSET ? 'knowledge_graph' : 'local'}
             status={selectedDetail === 'error' ? 'error' : selectedDetail ? 'loaded' : 'loading'}
             onOpen={openRelatedNarrator}
+            onOpenHadith={(hadith) => void selectHadith(hadith)}
             onRetry={() => retryNarratorDetails(selected.id)}
           />
           {editor.can_edit_biographies && !selected.record.profile_source && selected.id < KG_NARRATOR_OFFSET && selectedDetail && selectedDetail !== 'error' && (
@@ -1491,6 +1532,7 @@ function Explorer({ onHome }: { onHome: () => void }) {
               source={inspected.id >= KG_NARRATOR_OFFSET ? 'knowledge_graph' : 'local'}
               status={inspectedDetail === 'error' ? 'error' : inspectedDetail ? 'loaded' : 'loading'}
               onOpen={openRelatedNarrator}
+              onOpenHadith={(hadith) => void selectHadith(hadith)}
               onRetry={() => retryNarratorDetails(inspected.id)}
             />
           </article>

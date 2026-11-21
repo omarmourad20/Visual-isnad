@@ -24,7 +24,10 @@ from .permissions import StaffWritePermission
 from .throttles import LoginRateThrottle
 from .models import Hadith, Narrator, TransmissionEdge
 from .edge_schema import has_chain_index
-from .reviewed_routes import correct_reviewed_legacy_route, ibn_ulayya_supplement, supplemental_profile
+from .reviewed_routes import (
+    apply_path_identity_review, correct_reviewed_legacy_route, describe_reviewed_routes,
+    ibn_ulayya_supplement, route_evidence, supplemental_profile, withheld_route_reason,
+)
 from .source_api import source_candidates
 from .serializers import (
     COMPACT_NARRATOR_FIELDS,
@@ -72,6 +75,8 @@ def chain_payload(hadith: Hadith) -> dict:
     edges = list(queryset)
     raw_edges = serializer(edges, many=True).data
     display_edges = correct_reviewed_legacy_route(hadith, raw_edges)
+    if display_edges is raw_edges:
+        display_edges = apply_path_identity_review(hadith, raw_edges)
     narrator_ids = {edge[field] for edge in display_edges for field in ("teacher", "student")}
     narrators = list(Narrator.objects.filter(id__in=narrator_ids).only(*COMPACT_NARRATOR_FIELDS))
     if display_edges is not raw_edges:
@@ -88,6 +93,8 @@ def chain_payload(hadith: Hadith) -> dict:
     return {
         "narrators": CompactNarratorSerializer(narrators, many=True).data,
         "edges": display_edges,
+        "withheld_route_reason": withheld_route_reason(hadith, raw_edges),
+        "reviewed_routes": describe_reviewed_routes(hadith, raw_edges, display_edges),
         "chain_index_available": indexed_schema,
         "chain_boundaries_recorded": indexed_schema and all(edge.chain_index is not None for edge in edges),
     }
@@ -249,6 +256,22 @@ class NarratorViewSet(viewsets.ModelViewSet):
         data["teachers"] = summarize(teachers)
         data["students"] = summarize(students)
         data["transmission_students"] = summarize(transmission_students)
+        if request.query_params.get("evidence") == "1":
+            links = []
+            candidates = [url for url, review in route_evidence().items() if review.get("lengths")]
+            for hadith in bukhari_hadiths().filter(reference_url__in=candidates).order_by("id"):
+                payload = chain_payload(hadith)
+                relevant_ids = {
+                    edge["id"] for edge in payload["edges"] if narrator.pk in (edge["student"], edge["teacher"])
+                }
+                reviewed_edge_id = next((
+                    edge_id for route in payload["reviewed_routes"] if route["status"] == "reviewed"
+                    for edge_id in route["edge_ids"] if edge_id in relevant_ids
+                ), None)
+                if reviewed_edge_id is not None:
+                    links.append({"id": hadith.pk, "hadith_number": hadith.hadith_number,
+                                  "reference_url": hadith.reference_url, "edge_id": reviewed_edge_id})
+            data["reviewed_bukhari_hadiths"] = links
         return Response(data)
 
     def get_queryset(self):

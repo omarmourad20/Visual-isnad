@@ -507,15 +507,18 @@
 .transmission-edges.tracing path:not(.edge-hit) { stroke: #2b6a5e; stroke-width: 2.4; filter: drop-shadow(0 1px 2px rgba(42,105,93,.18)); }
 .transmission-edges .edge-hit { stroke: transparent; stroke-width: 14; cursor: pointer; }
 .transmission-edges g:hover path:not(.edge-hit), .transmission-edges g.selected path:not(.edge-hit) { stroke: #a7783f; stroke-width: 2.5; }
-.transmission-edges text { fill: #80908b; font-family: Georgia, serif; font-size: 7px; font-style: italic; paint-order: stroke; stroke: #fdfdfb; stroke-width: 4px; cursor: pointer; }
+.transmission-edges text { fill: #80908b; font-family: Georgia, serif; font-size: 10px; paint-order: stroke; stroke: #fdfdfb; stroke-width: 4px; cursor: pointer; }
 .svg-node { cursor: pointer; outline: none; }
 .svg-node > rect:first-child { fill: #fff; stroke: #d6ddd9; transition: .18s ease; }
 .svg-node > circle:not(.pulse) { fill: #e3efeb; stroke: #c7dcd6; }
 .svg-node .initials { fill: #2d675c; font-family: 'DM Sans', sans-serif; font-size: 9px; font-weight: 700; }
-.svg-node .node-name { fill: #273e39; font-family: 'DM Sans', sans-serif; font-size: 9px; font-weight: 700; }
-.svg-node .node-meta { fill: #89938f; font-family: 'DM Sans', sans-serif; font-size: 7px; }
-.svg-node .role-pill { fill: #f3f5f3; stroke: #e0e3df; }
-.svg-node .role-text { fill: #7e8985; font-family: 'DM Sans', sans-serif; font-size: 5.5px; text-transform: uppercase; }
+.graph-node-label > div { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.svg-node .node-name { color: #273e39; font: 700 11px 'DM Sans', sans-serif; }
+.svg-node .node-arabic { color: #273e39; font: 13px 'Noto Naskh Arabic', serif; text-align: start; }
+.svg-node .node-meta { color: #596d64; font: 8px 'DM Sans', sans-serif; }
+.svg-node:focus-visible > rect:first-child { stroke: #347165; stroke-width: 2.5; }
+.route-status { max-width: 68ch; overflow-wrap: anywhere; }
+.profile-intro h2, .narrator-reader-intro h2, .narrator-source-text { overflow-wrap: anywhere; }
 .svg-node:hover > rect:first-child, .svg-node.selected > rect:first-child { stroke: #347165; stroke-width: 1.8; fill: #fbfefd; }
 .svg-node.selected > circle:not(.pulse) { fill: #2f6b60; }
 .svg-node.selected .initials { fill: #fff; }

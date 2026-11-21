@@ -5,24 +5,60 @@ export type EdgeRecord = {
   terminology: string
   sequence: number
   chain_index?: number | null
+  correction?: { source_url: string; evidence: string; original_student: number; original_teacher: number }
 }
 
-export function groupChains(edges: EdgeRecord[]) {
-  const paths: EdgeRecord[][] = []
-  const byIndex = new Map<number | null, EdgeRecord[]>()
-  for (const edge of [...edges].sort((a, b) => a.sequence - b.sequence || a.id - b.id)) {
-    const index = edge.chain_index ?? null
-    let path = byIndex.get(index)
-    if (!path || path[path.length - 1].teacher !== edge.student) {
-      // Preserve disconnected runs as selectable paths instead of flattening
-      // them into a route that drops the later run's first student.
-      path = []
-      paths.push(path)
-      byIndex.set(index, path)
-    }
-    path.push(edge)
+export type RouteEvidence = {
+  edge_ids: number[]
+  status: 'reviewed' | 'legacy_segment'
+  source_url: string
+  note: string
+}
+
+type Route = {
+  edges: EdgeRecord[]
+  status: RouteEvidence['status'] | 'recorded' | 'unresolved'
+  evidence?: RouteEvidence
+}
+
+function isOrderedPath(edges: EdgeRecord[]) {
+  return edges.length > 0
+    && edges.every((edge, index) => index === 0 || (
+      edges[index - 1].teacher === edge.student && edges[index - 1].sequence < edge.sequence
+    ))
+    && new Set(orderChain(edges)).size === edges.length + 1
+}
+
+export function groupChains(edges: EdgeRecord[], evidence: RouteEvidence[] = []): Route[] {
+  const ordered = [...edges].sort((a, b) => a.sequence - b.sequence || a.id - b.id)
+  const byId = new Map(ordered.map(edge => [edge.id, edge]))
+  const assigned = new Set<number>()
+  const routes: Route[] = []
+  for (const review of evidence) {
+    const path = review.edge_ids.map(id => byId.get(id))
+    if (!path.every((edge): edge is EdgeRecord => Boolean(edge && !assigned.has(edge.id))) || !isOrderedPath(path)) continue
+    routes.push({ edges: path, status: review.status, evidence: review })
+    path.forEach(edge => assigned.add(edge.id))
   }
-  return paths
+  const indexed = new Map<number, EdgeRecord[]>()
+  for (const edge of ordered) {
+    if (assigned.has(edge.id)) continue
+    if (edge.chain_index == null) {
+      routes.push({ edges: [edge], status: 'unresolved' })
+      continue
+    }
+    const group = indexed.get(edge.chain_index) ?? []
+    group.push(edge)
+    indexed.set(edge.chain_index, group)
+  }
+  for (const path of indexed.values()) {
+    if (isOrderedPath(path)) {
+      routes.push({ edges: path, status: 'recorded' })
+    } else {
+      routes.push(...path.map(edge => ({ edges: [edge], status: 'unresolved' as const })))
+    }
+  }
+  return routes.sort((a, b) => a.edges[0].sequence - b.edges[0].sequence || a.edges[0].id - b.edges[0].id)
 }
 
 export function orderChain(edges: EdgeRecord[]) {

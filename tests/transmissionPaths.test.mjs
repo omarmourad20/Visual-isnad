@@ -5,33 +5,45 @@ import { groupChains, orderChain } from '../src/transmissionPaths.ts'
 function edge(sequence, student, teacher, chain_index) {
   return { id: sequence + 1, sequence, student, teacher, chain_index, terminology: 'عن' }
 }
+const ordered = routes => routes.map(route => orderChain(route.edges))
 
-test('preserves both paths when they share a compiler and prophetic endpoint', () => {
-  const result = groupChains([edge(3, 12, 1, 1), edge(0, 30001, 11, 0), edge(2, 30001, 12, 1), edge(1, 11, 1, 0)])
-  assert.deepEqual(result.map(orderChain), [[1, 11, 30001], [1, 12, 30001]])
+test('preserves both indexed paths sharing compiler and prophetic endpoint', () => {
+  const routes = groupChains([edge(3, 12, 1, 1), edge(0, 30001, 11, 0), edge(2, 30001, 12, 1), edge(1, 11, 1, 0)])
+  assert.deepEqual(ordered(routes), [[1, 11, 30001], [1, 12, 30001]])
+  assert.deepEqual(routes.map(route => route.status), ['recorded', 'recorded'])
 })
 
-test('preserves both endpoints of an explicitly indexed disconnected path', () => {
-  const result = groupChains([edge(0, 30001, 11, 0), edge(1, 22, 1, 0)])
-  assert.deepEqual(result.map(orderChain), [[11, 30001], [1, 22]])
+test('does not package a disconnected or cyclic indexed path as a route', () => {
+  const split = groupChains([edge(0, 30001, 11, 0), edge(1, 22, 1, 0)])
+  assert.deepEqual(ordered(split), [[11, 30001], [1, 22]])
+  assert.deepEqual(split.map(route => route.status), ['unresolved', 'unresolved'])
+  const cycle = groupChains([edge(0, 10, 11, 0), edge(1, 11, 10, 0)])
+  assert.equal(cycle.filter(route => route.status === 'unresolved').length, 2)
 })
 
-test('keeps unindexed legacy paths separate from indexed paths', () => {
-  const result = groupChains([edge(0, 30001, 11, 0), edge(1, 30001, 12, null), edge(2, 12, 1, null)])
-  assert.deepEqual(result.map(orderChain), [[11, 30001], [1, 12, 30001]])
+test('does not join unindexed edges by connectivity', () => {
+  const routes = groupChains([edge(0, 30001, 11, 0), edge(1, 30001, 12, null), edge(2, 12, 1, null)])
+  assert.deepEqual(ordered(routes), [[11, 30001], [12, 30001], [1, 12]])
+  assert.deepEqual(routes.map(route => route.status), ['recorded', 'unresolved', 'unresolved'])
 })
 
-test('keeps corrected legacy Bukhari 15 segments separate in teacher-to-student order', () => {
+test('keeps both source-annotated Bukhari 15 segments in teaching order', () => {
   const first = [30001, 30400, 20208, 11295, 19, 1]
   const second = [30001, 20404, 20020, 11019, 19]
   const edges = []
   for (const path of [first, second]) {
-    path.slice(1).forEach((teacher, index) => {
-      edges.push(edge(edges.length, path[index], teacher, null))
-    })
+    path.slice(1).forEach((teacher, index) => edges.push(edge(edges.length, path[index], teacher, null)))
   }
-  assert.deepEqual(groupChains(edges).map(orderChain), [
-    [1, 19, 11295, 20208, 30400, 30001],
-    [19, 11019, 20020, 20404, 30001],
+  const routes = groupChains(edges, [
+    { edge_ids: [1, 2, 3, 4, 5], status: 'reviewed' },
+    { edge_ids: [6, 7, 8, 9], status: 'legacy_segment' },
   ])
+  assert.deepEqual(ordered(routes), [first.toReversed(), second.toReversed()])
+  assert.deepEqual(routes.map(route => route.status), ['reviewed', 'legacy_segment'])
+})
+
+test('incomplete source annotations cannot swallow recorded edges', () => {
+  const routes = groupChains([edge(0, 2, 1, null)], [{ edge_ids: [1, 8], status: 'reviewed' }])
+  assert.equal(routes[0].status, 'unresolved')
+  assert.equal(routes[0].edges[0].id, 1)
 })

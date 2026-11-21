@@ -61,5 +61,15 @@ test('separates KG route relationships and catalog relationships', () => {
   assert.match(local, /Open catalog entry/)
   assert.match(local, /Open Hadith Knowledge Graph profile/)
   assert.match(kg, /general Knowledge Graph observations/)
-  assert.match(local, /Narrators linked in imported Bukhari chains \(1\)/)
+  assert.match(local, /Students listed in imported Bukhari edges \(unreviewed\) \(1\)/)
+})
+
+test('provides source links for reviewed Bukhari records and labels Hijri dates', () => {
+  const html = profile({ birth_year: 83, death_year: 160, reviewed_bukhari_hadiths: [
+    { id: 1067, hadith_number: '1067', reference_url: 'https://sunnah.com/bukhari:1067' },
+  ] })
+  assert.match(html, /83 AH/)
+  assert.match(html, /160 AH/)
+  assert.match(html, /Open Bukhari 1067/)
+  assert.match(html, /https:\/\/sunnah.com\/bukhari:1067/)
 })
