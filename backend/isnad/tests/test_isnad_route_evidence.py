@@ -75,3 +75,21 @@ class IsnadRouteEvidenceTests(SimpleTestCase):
                 self.assertEqual(edges[-1]["teacher"], terminal)
                 route, = describe_reviewed_routes(hadith, raw, edges)
                 self.assertEqual(route["edge_ids"], [edge["id"] for edge in raw])
+
+    def test_bukhari_1000_review_binds_source_and_exact_legacy_path(self):
+        hadith, raw = self.record(1000)
+        self.assertEqual(
+            [(edge["student"], edge["teacher"]) for edge in raw],
+            [(30001, 20040), (20040, 20216), (20216, 11014), (11014, 18)],
+        )
+        route, = describe_reviewed_routes(hadith, raw, raw)
+        self.assertEqual(route["status"], "reviewed")
+        self.assertEqual(route["edge_ids"], [45000, 45001, 45002, 45003])
+        self.assertIn("sanad 1158", route["note"])
+
+        # A different terminal identity, even along a connected path, is not reviewed.
+        raw[-1]["teacher"] = 800976
+        self.assertEqual(describe_reviewed_routes(hadith, raw, raw), [])
+        raw[-1]["teacher"] = 18
+        hadith.arabic_isnad += " كلام آخر"
+        self.assertEqual(describe_reviewed_routes(hadith, raw, raw), [])

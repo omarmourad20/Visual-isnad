@@ -464,10 +464,9 @@
 .isnad-status { border-radius: 999px; padding: 3px 8px; color: #455850; background: #edf0eb; font-size: 11px; font-weight: 600; }
 .isnad-status-reviewed { color: #285447; background: #e2efe8; }
 .isnad-status-legacy_segment, .isnad-status-unresolved { color: #79531f; background: #f5ebd9; }
-.isnad-evidence, .isolated-transmissions { margin-bottom: 10px; color: #435e54; font-size: 12px; overflow-wrap: anywhere; }
+.isnad-evidence { margin-bottom: 10px; color: #435e54; font-size: 12px; overflow-wrap: anywhere; }
 .isnad-evidence p { margin: 5px 0 0; max-width: 72ch; line-height: 1.55; }
-.isnad-evidence summary, .isolated-transmissions summary { width: fit-content; cursor: pointer; }
-.isolated-transmissions > summary { margin-bottom: 12px; }
+.isnad-evidence summary { width: fit-content; cursor: pointer; }
 .isnad-empty { border-block-start: 1px solid #dbe3dd; margin: 0 0 12px; padding: 12px 0 0; color: #435e54; font-size: 14px; }
 .isnad-actions { justify-content: flex-end; margin-bottom: 9px; }
 .graph-canvas:focus-visible, .isnad-picker select:focus-visible, .isnad-evidence summary:focus-visible { outline: 2px solid #24594f; outline-offset: 2px; }

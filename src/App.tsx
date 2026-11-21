@@ -431,7 +431,6 @@ export function IsnadViewer({
   const [tracePath, setTracePath] = useState(false)
   const [highlightMadar, setHighlightMadar] = useState(false)
   const route = chains[chainIndex]
-  const hasRoutes = chains.some(route => route.status !== 'unresolved')
   const labelFor = (route: Route, index: number) =>
     `${route.status === 'unresolved' ? 'Recorded edge' : 'Isnad'} ${index + 1}`
   const graph = route && (
@@ -467,17 +466,14 @@ export function IsnadViewer({
         <p className="isnad-empty" role="status">{waiting ? 'Loading isnad…' : emptyReason || 'No transmission route is available for this hadith.'}</p>
       ) : (
         <>
-          {!hasRoutes && <p className="isnad-empty" role="status">A transmission route cannot be reconstructed from the available records.</p>}
-          {hasRoutes && <div className="graph-actions isnad-actions" aria-label="Graph display options" role="group">
+          {route?.status === 'unresolved' && (
+            <p className="isnad-empty" role="status">Showing one recorded transmission. Its place in a route is unverified.</p>
+          )}
+          {route?.status !== 'unresolved' && <div className="graph-actions isnad-actions" aria-label="Graph display options" role="group">
             <button type="button" aria-pressed={tracePath} className={tracePath ? 'active' : ''} onClick={() => setTracePath(!tracePath)}><Icon name="branch" size={14} /> Trace path</button>
             <button type="button" aria-pressed={highlightMadar} className={highlightMadar ? 'active gold' : ''} onClick={() => setHighlightMadar(!highlightMadar)}><span className="radar-dot" /> Highlight Madar</button>
           </div>}
-          {hasRoutes ? graph : (
-            <details className="isolated-transmissions">
-              <summary>Inspect recorded transmission edges</summary>
-              {graph}
-            </details>
-          )}
+          {graph}
         </>
       )}
     </section>
@@ -649,7 +645,7 @@ function IsnadGraph({
             height={chainLayout.height * graphScale}
             viewBox={`0 0 900 ${chainLayout.height}`}
             role="group"
-            aria-label={`${label}: directed chain of narration`}
+            aria-label={`${label}: ${route.status === 'unresolved' ? 'isolated recorded transmission' : 'directed chain of narration'}`}
           >
             <defs>
               <marker id={`${graphId}-arrow`} markerWidth="8" markerHeight="8" refX="5" refY="3" orient="auto">
