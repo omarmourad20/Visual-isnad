@@ -1541,11 +1541,12 @@ function Explorer({ onHome }: { onHome: () => void }) {
             <span className="profile-avatar">{selected.initials}</span>
             {selected.arabic && <p className="profile-arabic" lang="ar" dir="rtl">{selected.arabic}</p>}
             <h2 dir="auto">{selected.name}</h2>
-            <div className="profile-tags"><span>{selected.role}</span><span>{selected.grade}</span></div>
+            <div className="profile-tags"><span>{selected.role}</span><span dir="auto">{selected.grade}</span></div>
           </div>
 
           <NarratorProfile
             record={selected.record}
+            source={selected.id >= KG_NARRATOR_OFFSET ? 'knowledge_graph' : 'local'}
             status={selectedDetail === 'error' ? 'error' : selectedDetail ? 'loaded' : 'loading'}
             onOpen={openRelatedNarrator}
             onRetry={() => retryNarratorDetails(selected.id)}
@@ -1615,7 +1616,7 @@ function Explorer({ onHome }: { onHome: () => void }) {
                 <h2 id="narrator-reader-title" dir="auto">{inspected.name}</h2>
                 <div className="profile-tags">
                   <span>{inspected.role}</span>
-                  <span>{inspected.grade}</span>
+                  <span dir="auto">{inspected.grade}</span>
                 </div>
               </div>
               <button type="button" onClick={() => setInspectedNarrator(null)} aria-label="Close">
@@ -1625,6 +1626,7 @@ function Explorer({ onHome }: { onHome: () => void }) {
             <NarratorProfile
               key={inspected.id}
               record={inspected.record}
+              source={inspected.id >= KG_NARRATOR_OFFSET ? 'knowledge_graph' : 'local'}
               status={inspectedDetail === 'error' ? 'error' : inspectedDetail ? 'loaded' : 'loading'}
               onOpen={openRelatedNarrator}
               onRetry={() => retryNarratorDetails(inspected.id)}
